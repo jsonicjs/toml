@@ -46,16 +46,18 @@ describe('toml', () => {
     })
   })
 
+
   test('toml-valid', async () => {
     const toml = Jsonic.make().use(Toml)
 
-    let root = __dirname + '/toml-test/tests/valid/table'
+    let root = __dirname + '/toml-test/tests/valid'
 
     let found = find(root, [])
 
     let counts = { pass: 0, fail: 0 }
     for (let test of found) {
       try {
+        // console.log('TEST', test.name)
         test.out = toml(test.toml)
         test.norm = norm(test.out)
         expect(test.norm).toEqual(test.json)
@@ -72,28 +74,6 @@ describe('toml', () => {
 
     console.log('COUNTS', counts)
 
-    function find(parent: string, found: any[]) {
-      for (let file of Fs.readdirSync(parent)) {
-        let filepath = Path.join(parent, file)
-        let desc = Fs.lstatSync(filepath)
-        if (desc.isDirectory()) {
-          find(filepath, found)
-        }
-        else if (desc.isFile()) {
-          let m: any = file.match(/^(.+)\.toml$/)
-          if (m && m[1]) {
-            found.push({
-              name: Path.join(parent, m[1]),
-              json: JSON.parse(
-                Fs.readFileSync(Path.join(parent, m[1] + '.json')).toString()),
-              toml: Fs.readFileSync(Path.join(parent, m[1] + '.toml')).toString()
-            })
-          }
-        }
-      }
-
-      return found
-    }
 
     function norm(val: any) {
       return JSON.parse(JSON.stringify(val), (_k: string, v: any) => {
@@ -120,3 +100,25 @@ describe('toml', () => {
 })
 
 
+function find(parent: string, found: any[]) {
+  for (let file of Fs.readdirSync(parent)) {
+    let filepath = Path.join(parent, file)
+    let desc = Fs.lstatSync(filepath)
+    if (desc.isDirectory()) {
+      find(filepath, found)
+    }
+    else if (desc.isFile()) {
+      let m: any = file.match(/^(.+)\.toml$/)
+      if (m && m[1]) {
+        found.push({
+          name: Path.join(parent, m[1]),
+          json: JSON.parse(
+            Fs.readFileSync(Path.join(parent, m[1] + '.json')).toString()),
+          toml: Fs.readFileSync(Path.join(parent, m[1] + '.toml')).toString()
+        })
+      }
+    }
+  }
+
+  return found
+}

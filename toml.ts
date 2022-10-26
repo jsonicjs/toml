@@ -25,10 +25,28 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
 
   const { deep } = jsonic.util
 
+  let TKEY = jsonic.token('#TKEY')
+
+  jsonic.lex(function makeTomlKeyMatcher(cfg: Config, opts: Options) {
+    return function tomlkeyMatcher(lex: Lex, rule: Rule) {
+      let { pnt, src } = lex
+
+      let m = src.substring(pnt.sI).match(/^([a-zA-Z0-9_-]+)/)
+
+      if (m) {
+        let key = m[1]
+        console.log('LEX KEY', key, rule.name, rule.parent.name)
+      }
+
+      return undefined
+    }
+  })
+
 
   const token = {
     '#CL': '=',
     '#DOT': '.',
+
 
     // TODO
     // FIX: these break normal [[a]] arrays, have to use OS,CS
@@ -37,7 +55,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
     // '#TCA': ']]',
 
     // TODO
-    // '#TKEY': /[A-Za-z0-9_-]+/
+    // '#KEY': /[A-Za-z0-9_-]+/
   }
 
   // Jsonic option overrides.
@@ -69,25 +87,9 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
   jsonic.options(jsonicOptions)
 
 
-  // let KEY = jsonic.token('#KEY')
+  const { TX, ST, VL, NR, OS, CS, CL, DOT } = jsonic.token
 
-
-  // jsonic.lex(() => (lex, rule) => {
-  //   if (lex.src.substring(lex.pnt.sI).startsWith('[[')) {
-  //     console.log(
-  //       '============',
-  //       rule.name, rule.d,
-  //       lex.src.substring(lex.pnt.sI, lex.pnt.sI + 9))
-  //     // console.log(lex, rule)
-  //   }
-  //   return undefined
-  // })
-
-
-
-  // const { TX, ST, OS, CS, DOT, TOA, TCA } = jsonic.token
-  const { TX, ST, OS, CS, CL, DOT } = jsonic.token
-
+  const KEY = [TX, ST, VL, NR]
 
   jsonic.rule('toml', (rs: RuleSpec) => {
     rs
@@ -95,8 +97,9 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         r.node = {}
       })
       .open([
-        { s: [TX, CL], p: 'table', b: 2 },
-        { s: [OS, TX], p: 'table', b: 2 },
+        { s: [KEY, CL], p: 'table', b: 2 },
+        { s: [OS, KEY], p: 'table', b: 2 },
+        { s: [OS, OS], p: 'table', b: 2 },
       ])
   })
 
@@ -105,57 +108,102 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
     rs
       .bo(r => {
         r.node = r.parent.node
-        // r.use.table_map = r.prev.use.table_map
-        // r.node = 'toml' === r.parent.name ? r.parent.node : r.prev.node
       })
       .open([
-        { s: [TX, CL], p: 'map', b: 2 },
+        { s: [KEY, CL], p: 'map', b: 2 },
 
-        { s: [OS, TX], r: 'table' },
+        { s: [OS, KEY], r: 'table', b: 1 },
+
+        { s: [OS, OS], r: 'table', n: { table_array: 1 } },
 
         {
-          s: [TX, DOT],
+          s: [KEY, DOT],
           r: 'table',
           c: { n: { table_dive: 0 } },
           n: { table_dive: 1 },
           a: (r) => {
             let key = r.o0.val
-            r.node = (r.parent.node[key] = r.parent.node[key] || {})
+            if (r.n.table_array && Array.isArray(r.parent.node[key])) {
+              let arr = r.parent.node[key]
+              let last = arr[arr.length - 1]
+              r.node = last ? last : (arr.push({}), arr[arr.length - 1])
+            }
+            else {
+              r.node =
+                (r.parent.node[key] = r.parent.node[key] || {})
+            }
           },
           g: 'dive,start'
         },
 
         {
-          s: [TX, DOT],
+          s: [KEY, DOT],
           r: 'table',
           n: { table_dive: 1 },
           a: (r) => {
             let key = r.o0.val
-            r.node = (r.prev.node[key] = r.prev.node[key] || {})
+            // console.log('KEY', key, r.n.table_array)
+            // console.log('PREV', r.prev.node)
+            if (Array.isArray(r.prev.node)) {
+              let arr = r.prev.node
+              // console.log('ARR', arr)
+              let last = arr[arr.length - 1]
+              last = last ? last : (arr.push({}), arr[arr.length - 1])
+              // console.log('LAST', last)
+              r.node = (last[key] = last[key] || {})
+            }
+            else {
+              r.node = (r.prev.node[key] = r.prev.node[key] || {})
+            }
           },
           g: 'dive'
         },
 
         {
-          s: [TX, CS],
+          s: [KEY, CS],
           c: { n: { table_dive: 0 } },
-          p: 'map',
+          p: (r) => !r.n.table_array && 'map',
+          r: (r) => r.n.table_array && 'table',
           a: (r) => {
             let key = r.o0.val
-            r.parent.node[key] = (r.node = r.parent.node[key] || {})
+            r.parent.node[key] =
+              (r.node = r.parent.node[key] || (r.n.table_array ? [] : {}))
           }
         },
 
         {
-          s: [TX, CS],
-          p: 'map',
+          s: [KEY, CS],
+          p: (r) => !r.n.table_array && 'map',
+          r: (r) => r.n.table_array && 'table',
           a: (r) => {
             let key = r.o0.val
-            r.node = (r.prev.node[key] = r.prev.node[key] || {})
+            // console.log('DIVE END', key, r.prev.node)
+
+            if (Array.isArray(r.prev.node)) {
+              let arr = r.prev.node
+              // console.log('ARR', arr)
+              let last = arr[arr.length - 1]
+              last = last ? last : (arr.push({}), arr[arr.length - 1])
+              // console.log('LAST', last)
+              r.node = (last[key] = last[key] || {})
+            }
+            else {
+              r.node =
+                (r.prev.node[key] = r.prev.node[key] || (r.n.table_array ? [] : {}))
+            }
           },
           g: 'dive,end'
         },
 
+        {
+          s: [CS],
+          p: 'map',
+          c: { n: { table_array: 1 } },
+          a: (r) => {
+            // r.node = r.prev.node
+            r.prev.node.push(r.node = {})
+          }
+        },
       ])
 
       .bc(r => {
@@ -163,14 +211,22 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       })
 
       .close([
-        { s: [OS], r: 'table', n: { table_dive: 0 } },
-        { n: { table_dive: 0 } },
+        { s: [OS, OS], r: 'table', b: 2 },
+        { s: [OS], r: 'table' },
       ])
+
+      .ac((_rule, _ctx, next) => {
+        next.n.table_dive = 0
+        next.n.table_array = 0
+      })
   })
 
 
   jsonic.rule('map', (rs: RuleSpec) => {
     rs
+      .open([
+        { s: [OS], b: 1 }
+      ])
       .close([
         { s: [OS], b: 1 }
       ])
@@ -184,184 +240,6 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       ])
   })
 
-
-  // jsonic.rule('val', (rs: RuleSpec): RuleSpec => {
-  //   rs.open([
-  //     {
-  //       s: [OS, TX],
-  //       b: 1,
-  //       c: (r) => 0 === r.d,
-  //       p: 'map'
-  //     },
-  //     {
-  //       s: [TX, DOT],
-  //       b: 2,
-  //       p: 'map'
-  //     },
-  //     {
-  //       s: [TOA, TX],
-  //       b: 1,
-  //       c: (r) => 0 === r.d,
-  //       n: { tomlarr: 1 },
-  //       p: 'map'
-  //     },
-  //   ], { append: false })
-  //   return rs
-  // })
-
-
-  // jsonic.rule('map', (rs: RuleSpec): RuleSpec => {
-  //   rs
-  //     .open([
-  //       {
-  //         s: [OS, [TX, ST]],
-  //         b: 2,
-  //       },
-  //       {
-  //         s: [[TX, ST], CS],
-  //         b: 2,
-  //         c: (r) => 1 <= r.n.im,
-  //         p: 'pair'
-  //       },
-  //       {
-  //         s: [[TX, ST], DOT],
-  //         b: 2,
-  //         c: (r) => 1 <= r.n.im,
-  //         p: 'pair'
-  //       },
-  //       {
-  //         s: [[TX, ST], TCA],
-  //         b: 2,
-  //         c: (r) => 1 <= r.n.im && 1 === r.n.tomlarr,
-  //         p: 'pair',
-  //       },
-  //     ], { append: false })
-  //     .close([
-  //       {
-  //         s: [OS, [TX, ST]],
-  //         b: 2,
-  //       },
-  //       {
-  //         s: [TOA, [TX, ST]],
-  //         b: 2,
-  //       },
-  //     ], { append: false })
-  //     .ac((r) => {
-  //       if (r.n.tomlarr) {
-  //         delete r.n.tomlarr
-  //         delete r.parent.n.tomlarr
-  //       }
-  //     })
-  //   return rs
-  // })
-
-
-  // jsonic.rule('pair', (rs: RuleSpec): RuleSpec => {
-  //   rs
-  //     // .bo((r) => {
-  //     //   if (r.prev.use.tomlarr) {
-  //     //     r.use.tomlarr = r.prev.use.tomlarr
-  //     //   }
-  //     // })
-
-  //     .open([
-  //       {
-  //         s: [[TX, ST], CS],
-  //         c: (r) => 1 <= r.n.im,
-  //         u: { pair: true },
-  //         a: (r) => {
-  //           r.use.key = r.o0.val
-  //         },
-  //         p: 'map'
-  //       },
-  //       {
-  //         s: [[TX, ST], TCA],
-  //         c: (r) => 1 <= r.n.im,
-  //         u: { pair: true },
-  //         a: (r) => {
-  //           r.use.key = r.o0.val
-  //         },
-  //         p: 'list'
-  //       },
-  //       {
-  //         s: [[TX, ST], DOT],
-  //         c: (r) => 1 <= r.n.im,
-  //         u: { pair: true },
-  //         a: (r) => {
-  //           r.use.key = r.o0.val
-  //         },
-  //         p: 'map'
-  //       }
-
-  //     ], { append: false })
-
-  //     .bc((r) => {
-  //       // delete r.use.tomlarr
-  //     })
-
-  //     .close([
-  //       {
-  //         s: [OS, [TX, ST]],
-  //         c: (r) => 1 == r.n.tomlarr && 1 < r.n.im
-  //       },
-  //       {
-  //         s: [OS, [TX, ST]],
-  //         b: 1,
-  //         c: (r) => 1 == r.n.im,
-  //         r: 'pair',
-  //         g: 'start'
-  //       },
-  //       {
-  //         s: [TOA, [TX, ST]],
-  //         b: 1,
-  //         c: (r) => 1 == r.n.im,
-  //         r: 'pair',
-  //         g: 'start'
-  //       },
-  //       {
-  //         s: [[OS, TOA]],
-  //         b: 1,
-  //         c: (r) => 1 < r.n.im,
-  //         g: 'dive'
-  //       },
-  //     ], { append: false })
-  //   return rs
-  // })
-
-
-  // jsonic.rule('list', (rs: RuleSpec) => {
-  //   return rs
-  //     .open([
-  //       {
-  //         c: (r) => 1 === r.n.tomlarr,
-  //         n: { pk: -1 },
-  //         a: (r) => {
-  //           let key = r.parent.use.key
-  //           r.node = r.parent.node[key] || []
-  //         },
-  //         p: 'elem',
-  //         g: 'tomlarr'
-  //       },
-  //     ], { append: false })
-  // })
-
-
-  // jsonic.rule('elem', (rs: RuleSpec): RuleSpec => {
-  //   rs
-  //     .open([
-  //       {
-  //         c: (r) => 1 === r.n.tomlarr,
-  //         u: { elem: true },
-  //         p: 'map'
-  //       },
-  //     ], { append: false })
-  //     .close([
-  //       {
-  //         s: [[OS, TOA]]
-  //       },
-  //     ], { append: false })
-  //   return rs
-  // })
 
 }
 

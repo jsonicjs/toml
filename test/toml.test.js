@@ -42,11 +42,12 @@ describe('toml', () => {
     });
     test('toml-valid', async () => {
         const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
-        let root = __dirname + '/toml-test/tests/valid/table';
+        let root = __dirname + '/toml-test/tests/valid';
         let found = find(root, []);
         let counts = { pass: 0, fail: 0 };
         for (let test of found) {
             try {
+                // console.log('TEST', test.name)
                 test.out = toml(test.toml);
                 test.norm = norm(test.out);
                 expect(test.norm).toEqual(test.json);
@@ -61,26 +62,6 @@ describe('toml', () => {
             }
         }
         console.log('COUNTS', counts);
-        function find(parent, found) {
-            for (let file of fs_1.default.readdirSync(parent)) {
-                let filepath = path_1.default.join(parent, file);
-                let desc = fs_1.default.lstatSync(filepath);
-                if (desc.isDirectory()) {
-                    find(filepath, found);
-                }
-                else if (desc.isFile()) {
-                    let m = file.match(/^(.+)\.toml$/);
-                    if (m && m[1]) {
-                        found.push({
-                            name: path_1.default.join(parent, m[1]),
-                            json: JSON.parse(fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.json')).toString()),
-                            toml: fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.toml')).toString()
-                        });
-                    }
-                }
-            }
-            return found;
-        }
         function norm(val) {
             return JSON.parse(JSON.stringify(val), (_k, v) => {
                 let vt = typeof v;
@@ -103,4 +84,24 @@ describe('toml', () => {
         }
     });
 });
+function find(parent, found) {
+    for (let file of fs_1.default.readdirSync(parent)) {
+        let filepath = path_1.default.join(parent, file);
+        let desc = fs_1.default.lstatSync(filepath);
+        if (desc.isDirectory()) {
+            find(filepath, found);
+        }
+        else if (desc.isFile()) {
+            let m = file.match(/^(.+)\.toml$/);
+            if (m && m[1]) {
+                found.push({
+                    name: path_1.default.join(parent, m[1]),
+                    json: JSON.parse(fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.json')).toString()),
+                    toml: fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.toml')).toString()
+                });
+            }
+        }
+    }
+    return found;
+}
 //# sourceMappingURL=toml.test.js.map

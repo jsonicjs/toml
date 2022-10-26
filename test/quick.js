@@ -9,30 +9,63 @@ const toml = Jsonic.make()
       })
 
 console.dir(toml(`
-
 a=1
 b=2
 
-[foo]
-c=3
-d=4
-
-[zoo]
-cc=33
-dd=44
-
-[bar.zed]
-e=5
-f=6
-
-[red.green.blue]
-g=7
-h=8
-
-[red.green]
-i=9
-
+[c]
+d=3
 `),{depth:null})
+
+
+// console.dir(toml(`
+// [[a]]
+// [[a.b]]
+// [a.b.c]
+// d=0
+
+// `),{depth:null})
+
+
+
+// a=1
+// b=2
+
+// [foo]
+// c=3
+// d=4
+
+// [zoo]
+// cc=33
+// dd=44
+
+// [bar.zed]
+// e=5
+// f=6
+
+// [red.green.blue]
+// g=7
+// h=8
+
+// [red.green]
+// i=9
+
+// [[one]]
+// j=10
+// k=11
+
+// [[two]]
+// l=12
+// m=13
+
+// [[two]]
+// l=14
+// m=15
+
+// [[three.four]]
+// o=16
+// p=17
+
+// `),{depth:null})
 
 
 // // console.log(toml(''))
