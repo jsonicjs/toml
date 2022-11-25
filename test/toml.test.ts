@@ -3,7 +3,7 @@
 import Fs from 'fs'
 import Path from 'path'
 
-import { Jsonic } from '@jsonic/jsonic-next'
+import { Jsonic, Debug } from '@jsonic/jsonic-next'
 import { Toml } from '../toml'
 
 
@@ -13,8 +13,8 @@ const Fixtures = require('./toml-fixtures')
 describe('toml', () => {
 
   test('happy', async () => {
-    const toml = Jsonic.make().use(Toml)
-    expect(toml(`a=1`)).toEqual({ a: 1 })
+    const toml = makeToml()
+    expect(toml(`a=1`, { log: -1 })).toEqual({ a: 1 })
   })
 
 
@@ -99,6 +99,10 @@ describe('toml', () => {
   })
 })
 
+
+function makeToml() {
+  return Jsonic.make().use(Debug).use(Toml)
+}
 
 function find(parent: string, found: any[]) {
   for (let file of Fs.readdirSync(parent)) {

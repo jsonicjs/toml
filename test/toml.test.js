@@ -11,8 +11,8 @@ const toml_1 = require("../toml");
 const Fixtures = require('./toml-fixtures');
 describe('toml', () => {
     test('happy', async () => {
-        const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
-        expect(toml(`a=1`)).toEqual({ a: 1 });
+        const toml = makeToml();
+        expect(toml(`a=1`, { log: -1 })).toEqual({ a: 1 });
     });
     test('fixtures', async () => {
         const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
@@ -84,6 +84,9 @@ describe('toml', () => {
         }
     });
 });
+function makeToml() {
+    return jsonic_next_1.Jsonic.make().use(jsonic_next_1.Debug).use(toml_1.Toml);
+}
 function find(parent, found) {
     for (let file of fs_1.default.readdirSync(parent)) {
         let filepath = path_1.default.join(parent, file);

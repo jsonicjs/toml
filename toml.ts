@@ -16,6 +16,7 @@ import {
   EMPTY,
 } from '@jsonic/jsonic-next'
 
+
 // See defaults below for commentary.
 type TomlOptions = {
 }
@@ -25,49 +26,75 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
 
   const { deep } = jsonic.util
 
-  let TKEY = jsonic.token('#TKEY')
-
-  jsonic.lex(function makeTomlKeyMatcher(cfg: Config, opts: Options) {
-    return function tomlkeyMatcher(lex: Lex, rule: Rule) {
-      let { pnt, src } = lex
-
-      let m = src.substring(pnt.sI).match(/^([a-zA-Z0-9_-]+)/)
-
-      if (m) {
-        let key = m[1]
-        console.log('LEX KEY', key, rule.name, rule.parent.name)
-      }
-
-      return undefined
-    }
-  })
+  // let TKEY = jsonic.token('#TKEY')
 
 
-  const token = {
-    '#CL': '=',
-    '#DOT': '.',
+  // TODO: jsonic needs a tokenSet for KEY, which this plugin can alter
+  // keyMatcher should only match with parent rule pair
+
+  // jsonic.lex(function makeTomlKeyMatcher(cfg: Config, opts: Options) {
+  //   return function tomlkeyMatcher(lex: Lex, rule: Rule) {
+  //     let { pnt, src } = lex
+  //     let tkn: Token | undefined = undefined
+
+  //     let m = src.substring(pnt.sI).match(/^([a-zA-Z0-9_-]+)/)
+
+  //     if (m) {
+  //       let key = m[1]
+  //       console.log('LEX KEY', key, rule.name, rule.parent.name)
+
+  // 	tkn = lex.token(tin, undefined, msrc, pnt)
+
+  //       pnt.sI += mlen
+  //       pnt.cI += mlen
+  //     }
+
+  //   return tkn
+  //   }
+  // })
 
 
-    // TODO
-    // FIX: these break normal [[a]] arrays, have to use OS,CS
-    // OR: a context dependent lex matcher?
-    // '#TOA': '[[',
-    // '#TCA': ']]',
+  //   const token = {
+  //     '#CL': '=',
+  //     '#DOT': '.',
 
-    // TODO
-    // '#KEY': /[A-Za-z0-9_-]+/
-  }
+  //     '#ID': /^[a-zA-Z0-9_-]*$/,
+
+
+  //     // TODO
+  //     // FIX: these break normal [[a]] arrays, have to use OS,CS
+  //     // OR: a context dependent lex matcher?
+  //     // '#TOA': '[[',
+  //     // '#TCA': ']]',
+
+  //     // TODO
+  //     // '#KEY': /[A-Za-z0-9_-]+/
+  //   }
+  //
 
   // Jsonic option overrides.
   let jsonicOptions: any = {
     rule: {
-      start: 'toml'
+      start: 'toml',
+      exclude: 'jsonic',
     },
     lex: {
       emptyResult: {}
     },
     fixed: {
-      token,
+      token: {
+        '#CL': '=',
+        '#DOT': '.',
+      }
+    },
+    match: {
+      token: {
+        '#ID': /^[a-zA-Z0-9_-]+/,
+      }
+    },
+    tokenSet: {
+      KEY: ['#ST', '#ID', null, null],
+      VAL: [, , , ,]
     },
     comment: {
       def: {
@@ -86,10 +113,14 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
 
   jsonic.options(jsonicOptions)
 
+  console.log(jsonic.debug.describe())
+  // console.log(jsonic.internal().config)
 
-  const { TX, ST, VL, NR, OS, CS, CL, DOT } = jsonic.token
 
-  const KEY = [TX, ST, VL, NR]
+
+  const { ZZ, ST, NR, OS, CS, CL, DOT, ID } = jsonic.token
+
+  const KEY = [ST, NR, ID]
 
   jsonic.rule('toml', (rs: RuleSpec) => {
     rs
@@ -212,7 +243,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
 
       .close([
         { s: [OS, OS], r: 'table', b: 2 },
-        { s: [OS], r: 'table' },
+        { s: [OS, KEY], r: 'table', b: 1 },
+        { s: [ZZ] },
       ])
 
       .ac((_rule, _ctx, next) => {
@@ -228,14 +260,23 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         { s: [OS], b: 1 }
       ])
       .close([
-        { s: [OS], b: 1 }
+        { s: [OS], b: 1 },
+        { s: [ZZ] }
       ])
   })
-
 
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
       .close([
+        { s: [ID], b: 1, r: 'pair' },
+        { s: [OS], b: 1 }
+      ])
+  })
+
+  jsonic.rule('val', (rs: RuleSpec) => {
+    rs
+      .close([
+        { s: [ID], b: 1 },
         { s: [OS], b: 1 }
       ])
   })
