@@ -14,7 +14,7 @@ describe('toml', () => {
 
   test('happy', async () => {
     const toml = makeToml()
-    expect(toml(`a=1`, { log: -1 })).toEqual({ a: 1 })
+    expect(toml(`a=1`, { xlog: -1 })).toEqual({ a: 1 })
   })
 
 
@@ -50,7 +50,7 @@ describe('toml', () => {
   test('toml-valid', async () => {
     const toml = Jsonic.make().use(Toml)
 
-    let root = __dirname + '/toml-test/tests/valid'
+    let root = __dirname + '/toml-test/tests/valid/array'
 
     let found = find(root, [])
 
@@ -66,9 +66,9 @@ describe('toml', () => {
       }
       catch (e: any) {
         console.log('FAIL', test.name)
-        // console.dir(test, { depth: null })
+        console.dir(test, { depth: null })
         counts.fail++
-        // throw e
+        throw e
       }
     }
 
@@ -76,32 +76,42 @@ describe('toml', () => {
 
 
     function norm(val: any) {
-      return JSON.parse(JSON.stringify(val), (_k: string, v: any) => {
-        let vt = typeof v
-        if ('number' === vt) {
-          if (('' + vt).match(/^[0-9]+$/)) {
-            return { type: 'integer', value: '' + v }
+      return JSON.parse(
+        JSON.stringify(val, (_k: string, v: any) => {
+          console.log('SR', v, typeof v, v instanceof Date)
+          if (v instanceof Date) {
+            return '$$DATE$$' + v.toISOString()
           }
-          else {
-            return { type: 'float', value: '' + v }
+          return v
+        }),
+        (_k: string, v: any) => {
+          let vt = typeof v
+          if ('number' === vt) {
+            if (('' + v).match(/^[0-9]+$/)) {
+              return { type: 'integer', value: '' + v }
+            }
+            else {
+              return { type: 'float', value: '' + v }
+            }
           }
-        }
-        else if ('string' === vt) {
-          return { type: 'string', value: '' + v }
-        }
-        else if ('boolean' === vt) {
-          return { type: 'bool', value: '' + v }
-        }
+          else if ('string' === vt) {
+            return { type: 'string', value: '' + v }
+          }
+          else if ('boolean' === vt) {
+            return { type: 'bool', value: '' + v }
+          }
 
-        return v
-      })
+          return v
+        })
     }
   })
 })
 
 
 function makeToml() {
-  return Jsonic.make().use(Debug).use(Toml)
+  return Jsonic.make()
+    // .use(Debug)
+    .use(Toml)
 }
 
 function find(parent: string, found: any[]) {

@@ -5,37 +5,6 @@ exports.Toml = void 0;
 // Plugin implementation.
 const Toml = (jsonic, options) => {
     const { deep } = jsonic.util;
-    // let TKEY = jsonic.token('#TKEY')
-    // TODO: jsonic needs a tokenSet for KEY, which this plugin can alter
-    // keyMatcher should only match with parent rule pair
-    // jsonic.lex(function makeTomlKeyMatcher(cfg: Config, opts: Options) {
-    //   return function tomlkeyMatcher(lex: Lex, rule: Rule) {
-    //     let { pnt, src } = lex
-    //     let tkn: Token | undefined = undefined
-    //     let m = src.substring(pnt.sI).match(/^([a-zA-Z0-9_-]+)/)
-    //     if (m) {
-    //       let key = m[1]
-    //       console.log('LEX KEY', key, rule.name, rule.parent.name)
-    // 	tkn = lex.token(tin, undefined, msrc, pnt)
-    //       pnt.sI += mlen
-    //       pnt.cI += mlen
-    //     }
-    //   return tkn
-    //   }
-    // })
-    //   const token = {
-    //     '#CL': '=',
-    //     '#DOT': '.',
-    //     '#ID': /^[a-zA-Z0-9_-]*$/,
-    //     // TODO
-    //     // FIX: these break normal [[a]] arrays, have to use OS,CS
-    //     // OR: a context dependent lex matcher?
-    //     // '#TOA': '[[',
-    //     // '#TCA': ']]',
-    //     // TODO
-    //     // '#KEY': /[A-Za-z0-9_-]+/
-    //   }
-    //
     // Jsonic option overrides.
     let jsonicOptions = {
         rule: {
@@ -54,6 +23,15 @@ const Toml = (jsonic, options) => {
         match: {
             token: {
                 '#ID': /^[a-zA-Z0-9_-]+/,
+            },
+            value: {
+                isodate: {
+                    match: /^\d\d\d\d-\d\d-\d\d(T\d\d:\d\d:\d\d(\.\d\d\d)?Z)?/,
+                    val: (res) => {
+                        console.log('ISODATE', res);
+                        return new Date(res[0]);
+                    }
+                }
             }
         },
         tokenSet: {
@@ -65,18 +43,10 @@ const Toml = (jsonic, options) => {
                 slash: null,
                 multi: null
             }
-        },
-        // TODO
-        // value: {
-        //   localdate: {
-        //     match: /\d\d\d\d-\d\d-\d\d/
-        //   }
-        // }
+        }
     };
     jsonic.options(jsonicOptions);
-    console.log(jsonic.debug.describe());
-    // console.log(jsonic.internal().config)
-    const { ZZ, ST, NR, OS, CS, CL, DOT, ID } = jsonic.token;
+    const { ZZ, ST, NR, OS, CS, CL, DOT, ID, CA } = jsonic.token;
     const KEY = [ST, NR, ID];
     jsonic.rule('toml', (rs) => {
         rs
@@ -217,6 +187,13 @@ const Toml = (jsonic, options) => {
             .close([
             { s: [ID], b: 1 },
             { s: [OS], b: 1 }
+        ]);
+    });
+    jsonic.rule('elem', (rs) => {
+        rs
+            .close([
+            // Ignore trailing comma.
+            { s: [CA, CS], b: 1, g: 'comma' },
         ]);
     });
 };

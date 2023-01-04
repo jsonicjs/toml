@@ -12,7 +12,7 @@ const Fixtures = require('./toml-fixtures');
 describe('toml', () => {
     test('happy', async () => {
         const toml = makeToml();
-        expect(toml(`a=1`, { log: -1 })).toEqual({ a: 1 });
+        expect(toml(`a=1`, { xlog: -1 })).toEqual({ a: 1 });
     });
     test('fixtures', async () => {
         const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
@@ -42,7 +42,7 @@ describe('toml', () => {
     });
     test('toml-valid', async () => {
         const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
-        let root = __dirname + '/toml-test/tests/valid';
+        let root = __dirname + '/toml-test/tests/valid/array';
         let found = find(root, []);
         let counts = { pass: 0, fail: 0 };
         for (let test of found) {
@@ -56,17 +56,23 @@ describe('toml', () => {
             }
             catch (e) {
                 console.log('FAIL', test.name);
-                // console.dir(test, { depth: null })
+                console.dir(test, { depth: null });
                 counts.fail++;
-                // throw e
+                throw e;
             }
         }
         console.log('COUNTS', counts);
         function norm(val) {
-            return JSON.parse(JSON.stringify(val), (_k, v) => {
+            return JSON.parse(JSON.stringify(val, (_k, v) => {
+                console.log('SR', v, typeof v, v instanceof Date);
+                if (v instanceof Date) {
+                    return '$$DATE$$' + v.toISOString();
+                }
+                return v;
+            }), (_k, v) => {
                 let vt = typeof v;
                 if ('number' === vt) {
-                    if (('' + vt).match(/^[0-9]+$/)) {
+                    if (('' + v).match(/^[0-9]+$/)) {
                         return { type: 'integer', value: '' + v };
                     }
                     else {
@@ -85,7 +91,9 @@ describe('toml', () => {
     });
 });
 function makeToml() {
-    return jsonic_next_1.Jsonic.make().use(jsonic_next_1.Debug).use(toml_1.Toml);
+    return jsonic_next_1.Jsonic.make()
+        // .use(Debug)
+        .use(toml_1.Toml);
 }
 function find(parent, found) {
     for (let file of fs_1.default.readdirSync(parent)) {

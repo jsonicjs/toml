@@ -8,12 +8,9 @@ const toml = Jsonic.make()
       .use(Toml,{
       })
 
-console.dir(toml(`
-a=1
-b=2
 
-[c]
-d=3
+console.dir(toml(`
+a = 1987-07-05T17:45:00.000Z
 `),{depth:null})
 
 
