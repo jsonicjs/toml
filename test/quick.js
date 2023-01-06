@@ -8,10 +8,44 @@ const toml = Jsonic.make()
       .use(Toml,{
       })
 
-
 console.dir(toml(`
-a = 1987-07-05T17:45:00.000Z
+x=2
+a.b=1
+# "a" = "μ"
+q=1
+"μ" = "a"
 `),{depth:null})
+
+
+// console.dir(toml(`
+// m = '''a'b''c'''
+// n = "\\nQ\\eW\\"E"
+// e = ''
+// a = 'A'
+// b = 'Bb'
+// aa = "A"
+// bb = "Bb"
+// q = ''''q''''
+// qq = '''''q'''''
+// c = '''c'''
+// cc = '''
+// c
+// '''
+// dd = '''
+//   d\
+//   d\
+//   f
+//   f
+// '''
+// `),{depth:null})
+
+
+
+// console.dir(toml(`
+// a = 1987-07-05T17:45:00.000Z
+// b = 1988-07-05T17:45:00Z
+// c = [1989-07-05T17:45:00Z]
+// `),{depth:null})
 
 
 // console.dir(toml(`

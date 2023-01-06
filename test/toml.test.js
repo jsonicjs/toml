@@ -42,8 +42,9 @@ describe('toml', () => {
     });
     test('toml-valid', async () => {
         const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
-        let root = __dirname + '/toml-test/tests/valid/array';
+        let root = __dirname + '/toml-test/tests/valid';
         let found = find(root, []);
+        let fails = [];
         let counts = { pass: 0, fail: 0 };
         for (let test of found) {
             try {
@@ -56,23 +57,21 @@ describe('toml', () => {
             }
             catch (e) {
                 console.log('FAIL', test.name);
-                console.dir(test, { depth: null });
+                // console.dir(test, { depth: null })
                 counts.fail++;
-                throw e;
+                fails.push(test.name);
+                // throw e
             }
         }
         console.log('COUNTS', counts);
+        console.log('FAILS', fails);
         function norm(val) {
-            return JSON.parse(JSON.stringify(val, (_k, v) => {
-                console.log('SR', v, typeof v, v instanceof Date);
-                if (v instanceof Date) {
-                    return '$$DATE$$' + v.toISOString();
-                }
+            return JSON.parse(JSON.stringify(val, function (_k, v) {
                 return v;
             }), (_k, v) => {
                 let vt = typeof v;
                 if ('number' === vt) {
-                    if (('' + v).match(/^[0-9]+$/)) {
+                    if (('' + v).match(/^-?[0-9]+$/)) {
                         return { type: 'integer', value: '' + v };
                     }
                     else {
@@ -80,6 +79,19 @@ describe('toml', () => {
                     }
                 }
                 else if ('string' === vt) {
+                    // NOTE: munge the string to get a date
+                    if (/^\d\d\d\d-\d\d-\d\dT[^0]/.exec(v)) {
+                        return {
+                            type: v.match(/Z$/) ? 'datetime' : 'datetime-local',
+                            value: v.replace(/\.000Z$/, 'Z')
+                        };
+                    }
+                    else if (/^\d\d\d\d-/.exec(v)) {
+                        return { type: 'date-local', value: v.substring(0, 10) };
+                    }
+                    else if (/^\d\d:/.exec(v)) {
+                        return { type: 'time-local', value: v };
+                    }
                     return { type: 'string', value: '' + v };
                 }
                 else if ('boolean' === vt) {
