@@ -37,14 +37,39 @@ const Toml = (jsonic, options) => {
             value: {
                 // TODO: match date string instead
                 isodate: {
-                    match: /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d:\d\d(\.\d+)?([Zz]|-\d\d:\d\d)?)?/,
+                    match: /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d(:\d\d(\.\d+)?)?([Zz]|[-+]\d\d:\d\d)?)?/,
                     val: (res) => {
-                        return new Date(res[0]);
+                        // console.log(res)
+                        let date = new Date(res[0]);
+                        date.__toml__ = {
+                            kind: (null == res[4] ? 'local' : 'offset') + '-date' +
+                                (null == res[1] ? '' : '-time'),
+                            src: res[0],
+                        };
+                        return date;
                     }
                 },
                 localtime: {
-                    match: /^\d\d:\d\d:\d\d(\.\d+)/
+                    match: /^\d\d:\d\d(:\d\d(\.\d+)?)?/,
+                    val: (res) => {
+                        let date = new Date((60 * 60 * 1000) + new Date('1970-01-01 ' + res[0]).getTime());
+                        date.__toml__ = {
+                            kind: 'local-time',
+                            src: res[0],
+                        };
+                        return date;
+                    }
                 }
+            }
+        },
+        value: {
+            def: {
+                'nan': { val: NaN },
+                '+nan': { val: NaN },
+                '-nan': { val: NaN },
+                'inf': { val: Infinity },
+                '+inf': { val: Infinity },
+                '-inf': { val: -Infinity }
             }
         },
         tokenSet: {
@@ -70,6 +95,8 @@ const Toml = (jsonic, options) => {
             { s: [KEY, CL], p: 'table', b: 2 },
             { s: [OS, KEY], p: 'table', b: 2 },
             { s: [OS, OS], p: 'table', b: 2 },
+            { s: [KEY, DOT], p: 'table', b: 2 },
+            { s: [ZZ] },
         ]);
     });
     jsonic.rule('table', (rs) => {
@@ -81,6 +108,13 @@ const Toml = (jsonic, options) => {
             { s: [KEY, CL], p: 'map', b: 2 },
             { s: [OS, KEY], r: 'table', b: 1 },
             { s: [OS, OS], r: 'table', n: { table_array: 1 } },
+            {
+                s: [KEY, DOT],
+                c: (r) => 1 === r.d && 'table' !== r.prev.name,
+                p: 'dive',
+                b: 2,
+                u: { top_dive: true }
+            },
             {
                 s: [KEY, DOT],
                 r: 'table',
@@ -166,7 +200,9 @@ const Toml = (jsonic, options) => {
             },
         ])
             .bc(r => {
-            Object.assign(r.node, r.child.node);
+            if (!r.use.top_dive) {
+                Object.assign(r.node, r.child.node);
+            }
         })
             .close([
             { s: [OS, OS], r: 'table', b: 2 },
@@ -182,7 +218,13 @@ const Toml = (jsonic, options) => {
         rs
             .open([
             { s: [OS], b: 1 },
-            { s: [OB, ID], b: 1, p: 'pair' }
+            { s: [OB, KEY], b: 1, p: 'pair' },
+            {
+                s: [KEY, DOT],
+                p: 'dive',
+                b: 2,
+            },
+            { s: [ZZ] }
         ])
             .close([
             { s: [OS], b: 1 },
@@ -198,9 +240,13 @@ const Toml = (jsonic, options) => {
                 u: { pair: true },
                 a: (r) => r.use.key = r.o0.val
             },
+            {
+                s: [KEY, DOT],
+                p: 'dive',
+                b: 2,
+            }
         ])
             .close([
-            // { s: [ID], b: 1, r: 'pair' },
             { s: [KEY], b: 1, r: 'pair' },
             { s: [OS], b: 1 }
         ]);
@@ -208,7 +254,6 @@ const Toml = (jsonic, options) => {
     jsonic.rule('val', (rs) => {
         rs
             .close([
-            // { s: [ID], b: 1 },
             { s: [KEY], b: 1 },
             { s: [OS], b: 1 }
         ]);
@@ -218,6 +263,40 @@ const Toml = (jsonic, options) => {
             .close([
             // Ignore trailing comma.
             { s: [CA, CS], b: 1, g: 'comma' },
+        ]);
+    });
+    jsonic.rule('dive', (rs) => {
+        rs
+            .open([
+            {
+                s: [KEY, DOT],
+                p: 'dive',
+                n: { dive_key: 1 },
+                a: (r) => {
+                    r.parent.node[r.o0.val] = r.node = (r.parent.node[r.o0.val] || {});
+                }
+            },
+            {
+                s: [KEY, CL],
+                p: 'val',
+                n: { dive_key: 1 },
+                u: { dive_end: true },
+            }
+        ])
+            .bc((r) => {
+            if (r.use.dive_end) {
+                r.node[r.o0.val] = r.child.node;
+            }
+        })
+            .close([
+            {
+                s: [KEY, DOT],
+                b: 2,
+                r: 'dive',
+                c: { n: { dive_key: 1 } },
+                n: { dive_key: 0 },
+            },
+            {}
         ]);
     });
 };
@@ -326,11 +405,28 @@ function makeTomlStringMatcher() {
                                     value += ESCAPES[char];
                                     continue;
                                 }
+                                else if (char === 'x') {
+                                    sI++;
+                                    let cc = parseInt(src.substring(sI, sI + 2), 16);
+                                    if (isNaN(cc)) {
+                                        sI = sI - 2;
+                                        cI -= 2;
+                                        pnt.sI = sI;
+                                        pnt.cI = cI;
+                                        return lex.bad('invalid_ascii', sI, sI + 4);
+                                    }
+                                    let us = String.fromCharCode(cc);
+                                    // console.log('CC', cc, us)
+                                    value += us;
+                                    sI += 1; // Loop increments sI.
+                                    cI += 2;
+                                    continue;
+                                }
                                 // Any Unicode character may be escaped
                                 // with the \uXXXX or \UXXXXXXXX forms.
                                 // The escape codes must be valid Unicode scalar values.
                                 // https://toml.io/en/v1.0.0#string
-                                if (char === 'u' || char === 'U') {
+                                else if (char === 'u' || char === 'U') {
                                     let beginUnicode = sI;
                                     const size = char === 'u' ? 4 : 8;
                                     let codePoint = '';

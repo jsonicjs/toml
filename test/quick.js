@@ -8,16 +8,26 @@ const toml = Jsonic.make()
       .use(Toml,{
       })
 
+// console.dir(toml(`# foo`),{depth:null})
+
 console.dir(toml(`
-x=2
-a.b=1
-# "a" = "μ"
-q=1
-"μ" = "a"
+a="\\x68"
 `),{depth:null})
 
 
 // console.dir(toml(`
+// a.b=1
+// a.c=2
+// odt=1979-05-27T07:32:00Z
+// ldt=1979-05-27T07:32:00
+// ld=1979-05-27
+// lt0=00:00:00
+// lt1=13:13:13
+// d0=1977-12-21T10:32:00.555
+// x=2
+// "a" = "μ"
+// q=1
+// "μ" = "a"
 // m = '''a'b''c'''
 // n = "\\nQ\\eW\\"E"
 // e = ''
