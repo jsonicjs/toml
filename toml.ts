@@ -16,14 +16,11 @@ import {
   EMPTY,
 } from '@jsonic/jsonic-next'
 
-
 // See defaults below for commentary.
-type TomlOptions = {
-}
+type TomlOptions = {}
 
 // Plugin implementation.
 const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
-
   // Jsonic option overrides.
   let jsonicOptions: any = {
     rule: {
@@ -36,15 +33,15 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         string: {
           // CUSTOM STRING MATCHER https://github.com/huan231/toml-nodejs }
           // NOTE: order not needed as deep merge.
-          make: makeTomlStringMatcher
-        }
+          make: makeTomlStringMatcher,
+        },
       },
     },
     fixed: {
       token: {
         '#CL': '=',
         '#DOT': '.',
-      }
+      },
     },
     match: {
       token: {
@@ -53,51 +50,55 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       value: {
         // TODO: match date string instead
         isodate: {
-          match: /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d(:\d\d(\.\d+)?)?([Zz]|[-+]\d\d:\d\d)?)?/,
+          match:
+            /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d(:\d\d(\.\d+)?)?([Zz]|[-+]\d\d:\d\d)?)?/,
           val: (res: any) => {
             // console.log(res)
             let date: any = new Date(res[0])
             date.__toml__ = {
-              kind: (null == res[4] ? 'local' : 'offset') + '-date' +
+              kind:
+                (null == res[4] ? 'local' : 'offset') +
+                '-date' +
                 (null == res[1] ? '' : '-time'),
               src: res[0],
             }
             return date
-          }
+          },
         },
         localtime: {
           match: /^\d\d:\d\d(:\d\d(\.\d+)?)?/,
           val: (res: any) => {
-            let date: any =
-              new Date((60 * 60 * 1000) + new Date('1970-01-01 ' + res[0]).getTime())
+            let date: any = new Date(
+              60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime()
+            )
             date.__toml__ = {
               kind: 'local-time',
               src: res[0],
             }
             return date
-          }
-        }
-      }
+          },
+        },
+      },
     },
     value: {
       def: {
-        'nan': { val: NaN },
+        nan: { val: NaN },
         '+nan': { val: NaN },
         '-nan': { val: NaN },
-        'inf': { val: Infinity },
+        inf: { val: Infinity },
         '+inf': { val: Infinity },
-        '-inf': { val: -Infinity }
-      }
+        '-inf': { val: -Infinity },
+      },
     },
     tokenSet: {
       KEY: ['#ST', '#ID', null, null],
-      VAL: [, , , ,]
+      VAL: [, , , ,],
     },
     comment: {
       def: {
         slash: null,
-        multi: null
-      }
+        multi: null,
+      },
     },
   }
 
@@ -108,25 +109,21 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
   const KEY = [ST, NR, ID]
 
   jsonic.rule('toml', (rs: RuleSpec) => {
-    rs
-      .bo(r => {
-        r.node = {}
-      })
-      .open([
-        { s: [KEY, CL], p: 'table', b: 2 },
-        { s: [OS, KEY], p: 'table', b: 2 },
-        { s: [OS, OS], p: 'table', b: 2 },
-        { s: [KEY, DOT], p: 'table', b: 2 },
-        { s: [ZZ] },
-      ])
+    rs.bo((r) => {
+      r.node = {}
+    }).open([
+      { s: [KEY, CL], p: 'table', b: 2 },
+      { s: [OS, KEY], p: 'table', b: 2 },
+      { s: [OS, OS], p: 'table', b: 2 },
+      { s: [KEY, DOT], p: 'table', b: 2 },
+      { s: [ZZ] },
+    ])
   })
 
-
   jsonic.rule('table', (rs: RuleSpec) => {
-    rs
-      .bo(r => {
-        r.node = r.parent.node
-      })
+    rs.bo((r) => {
+      r.node = r.parent.node
+    })
       .open([
         { s: [KEY, CL], p: 'map', b: 2 },
 
@@ -139,7 +136,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           c: (r) => 1 === r.d && 'table' !== r.prev.name,
           p: 'dive',
           b: 2,
-          u: { top_dive: true }
+          u: { top_dive: true },
         },
 
         {
@@ -153,13 +150,11 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
               let arr = r.parent.node[key]
               let last = arr[arr.length - 1]
               r.node = last ? last : (arr.push({}), arr[arr.length - 1])
-            }
-            else {
-              r.node =
-                (r.parent.node[key] = r.parent.node[key] || {})
+            } else {
+              r.node = r.parent.node[key] = r.parent.node[key] || {}
             }
           },
-          g: 'dive,start'
+          g: 'dive,start',
         },
 
         {
@@ -176,13 +171,12 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
               let last = arr[arr.length - 1]
               last = last ? last : (arr.push({}), arr[arr.length - 1])
               // console.log('LAST', last)
-              r.node = (last[key] = last[key] || {})
-            }
-            else {
-              r.node = (r.prev.node[key] = r.prev.node[key] || {})
+              r.node = last[key] = last[key] || {}
+            } else {
+              r.node = r.prev.node[key] = r.prev.node[key] || {}
             }
           },
-          g: 'dive'
+          g: 'dive',
         },
 
         {
@@ -192,9 +186,9 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           r: (r) => r.n.table_array && 'table',
           a: (r) => {
             let key = r.o0.val
-            r.parent.node[key] =
-              (r.node = r.parent.node[key] || (r.n.table_array ? [] : {}))
-          }
+            r.parent.node[key] = r.node =
+              r.parent.node[key] || (r.n.table_array ? [] : {})
+          },
         },
 
         {
@@ -211,14 +205,13 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
               let last = arr[arr.length - 1]
               last = last ? last : (arr.push({}), arr[arr.length - 1])
               // console.log('LAST', last)
-              r.node = (last[key] = last[key] || {})
-            }
-            else {
-              r.node =
-                (r.prev.node[key] = r.prev.node[key] || (r.n.table_array ? [] : {}))
+              r.node = last[key] = last[key] || {}
+            } else {
+              r.node = r.prev.node[key] =
+                r.prev.node[key] || (r.n.table_array ? [] : {})
             }
           },
-          g: 'dive,end'
+          g: 'dive,end',
         },
 
         {
@@ -227,12 +220,12 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           c: { n: { table_array: 1 } },
           a: (r) => {
             // r.node = r.prev.node
-            r.prev.node.push(r.node = {})
-          }
+            r.prev.node.push((r.node = {}))
+          },
         },
       ])
 
-      .bc(r => {
+      .bc((r) => {
         if (!r.use.top_dive) {
           Object.assign(r.node, r.child.node)
         }
@@ -250,80 +243,69 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       })
   })
 
-
   jsonic.rule('map', (rs: RuleSpec) => {
-    rs
-      .open([
-        { s: [OS], b: 1 },
-        { s: [OB, KEY], b: 1, p: 'pair' },
-        {
-          s: [KEY, DOT],
-          p: 'dive',
-          b: 2,
-        },
-        { s: [ZZ] }
-      ])
-      .close([
-        { s: [OS], b: 1 },
-        { s: [ZZ] }
-      ])
+    rs.open([
+      { s: [OS], b: 1 },
+      { s: [OB, KEY], b: 1, p: 'pair' },
+      {
+        s: [KEY, DOT],
+        p: 'dive',
+        b: 2,
+      },
+      { s: [ZZ] },
+    ]).close([{ s: [OS], b: 1 }, { s: [ZZ] }])
   })
 
   jsonic.rule('pair', (rs: RuleSpec) => {
-    rs
-      .open([
-        {
-          s: [KEY, CL],
-          p: 'val',
-          u: { pair: true },
-          a: (r: Rule) => r.use.key = r.o0.val
-        },
-        {
-          s: [KEY, DOT],
-          p: 'dive',
-          b: 2,
-        }
-      ])
-      .close([
-        { s: [KEY], b: 1, r: 'pair' },
-        { s: [OS], b: 1 }
-      ])
+    rs.open([
+      {
+        s: [KEY, CL],
+        p: 'val',
+        u: { pair: true },
+        a: (r: Rule) => (r.use.key = r.o0.val),
+      },
+      {
+        s: [KEY, DOT],
+        p: 'dive',
+        b: 2,
+      },
+    ]).close([
+      { s: [KEY], b: 1, r: 'pair' },
+      { s: [OS], b: 1 },
+    ])
   })
 
   jsonic.rule('val', (rs: RuleSpec) => {
-    rs
-      .close([
-        { s: [KEY], b: 1 },
-        { s: [OS], b: 1 }
-      ])
+    rs.close([
+      { s: [KEY], b: 1 },
+      { s: [OS], b: 1 },
+    ])
   })
 
   jsonic.rule('elem', (rs: RuleSpec) => {
-    rs
-      .close([
-        // Ignore trailing comma.
-        { s: [CA, CS], b: 1, g: 'comma' },
-      ])
+    rs.close([
+      // Ignore trailing comma.
+      { s: [CA, CS], b: 1, g: 'comma' },
+    ])
   })
 
   jsonic.rule('dive', (rs) => {
-    rs
-      .open([
-        {
-          s: [KEY, DOT],
-          p: 'dive',
-          n: { dive_key: 1 },
-          a: (r) => {
-            r.parent.node[r.o0.val] = r.node = (r.parent.node[r.o0.val] || {})
-          }
+    rs.open([
+      {
+        s: [KEY, DOT],
+        p: 'dive',
+        n: { dive_key: 1 },
+        a: (r) => {
+          r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {}
         },
-        {
-          s: [KEY, CL],
-          p: 'val',
-          n: { dive_key: 1 },
-          u: { dive_end: true },
-        }
-      ])
+      },
+      {
+        s: [KEY, CL],
+        p: 'val',
+        n: { dive_key: 1 },
+        u: { dive_end: true },
+      },
+    ])
       .bc((r) => {
         if (r.use.dive_end) {
           r.node[r.o0.val] = r.child.node
@@ -337,12 +319,10 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           c: { n: { dive_key: 1 } },
           n: { dive_key: 0 },
         },
-        {}
+        {},
       ])
   })
-
 }
-
 
 // Adapted from https://github.com/huan231/toml-nodejs/blob/master/src/tokenizer.ts
 // Copyright (c) 2022 Jan Szybowski, MIT License
@@ -356,7 +336,7 @@ function makeTomlStringMatcher() {
     let begin = sI
 
     let delimiter = src[sI]
-    let singleQuote = '\'' === delimiter
+    let singleQuote = "'" === delimiter
     let doubleQuote = '"' === delimiter
 
     if (!singleQuote && !doubleQuote) {
@@ -386,7 +366,7 @@ function makeTomlStringMatcher() {
 
     let value = ''
 
-    for (; sI < srclen - 1;) {
+    for (; sI < srclen - 1; ) {
       ++sI
       ++cI
 
@@ -455,7 +435,10 @@ function makeTomlStringMatcher() {
             return lex.bad('unterminated_string', begin, sI)
           }
 
-          if (!isUnicodeCharacter(char) || isControlCharacterOtherThanTab(char)) {
+          if (
+            !isUnicodeCharacter(char) ||
+            isControlCharacterOtherThanTab(char)
+          ) {
             return lex.bad('unprintable', sI, sI + 1)
           }
 
@@ -468,16 +451,14 @@ function makeTomlStringMatcher() {
 
             case '"':
               if (char === '\\') {
-                const char = src[++cI, ++sI]
+                const char = src[(++cI, ++sI)]
                 // console.log('ESCAPE:' + char)
 
                 if (isEscaped(char)) {
                   value += ESCAPES[char]
 
                   continue
-                }
-
-                else if (char === 'x') {
+                } else if (char === 'x') {
                   sI++
                   let cc = parseInt(src.substring(sI, sI + 2), 16)
 
@@ -506,10 +487,10 @@ function makeTomlStringMatcher() {
                   let beginUnicode = sI
                   const size = char === 'u' ? 4 : 8
 
-                  let codePoint = '';
+                  let codePoint = ''
 
                   for (let i = 0; i < size; i++) {
-                    const char = src[++cI, ++sI]
+                    const char = src[(++cI, ++sI)]
 
                     if (sI >= srclen || !isHexadecimal(char)) {
                       return lex.bad('invalid_unicode', beginUnicode, sI)
@@ -537,16 +518,18 @@ function makeTomlStringMatcher() {
                 // to the next non-whitespace character or closing
                 // delimiter.
                 // https://toml.io/en/v1.0.0#string
-                if (isMultiline && (isWhitespace(char) ||
-                  char === '\n' ||
-                  char === '\r')) {
+                if (
+                  isMultiline &&
+                  (isWhitespace(char) || char === '\n' || char === '\r')
+                ) {
                   // while (this.iterator.take(' ', '\t', '\n')) {
                   while (
                     (' ' === src[sI + 1] && ++cI) ||
                     ('\t' === src[sI + 1] && ++cI) ||
-                    ('\n' === src[sI + 1] && (cI = 0, ++rI)) ||
-                    ('\r' === src[sI + 1] && '\n' === src[sI + 2]
-                      && (cI = 0, ++sI, ++rI))
+                    ('\n' === src[sI + 1] && ((cI = 0), ++rI)) ||
+                    ('\r' === src[sI + 1] &&
+                      '\n' === src[sI + 2] &&
+                      ((cI = 0), ++sI, ++rI))
                   ) {
                     sI++
                   }
@@ -571,12 +554,7 @@ function makeTomlStringMatcher() {
     pnt.cI = cI
     pnt.rI = rI
 
-    let st = lex.token(
-      '#ST',
-      value,
-      src.substring(begin, sI),
-      pnt
-    )
+    let st = lex.token('#ST', value, src.substring(begin, sI), pnt)
 
     // console.log(st, '<' + value + '>')
 
@@ -584,19 +562,18 @@ function makeTomlStringMatcher() {
   }
 }
 
-
 const ESCAPES = {
-  'b': '\b',
-  't': '\t',
-  'n': '\n',
-  'f': '\f',
-  'r': '\r',
+  b: '\b',
+  t: '\t',
+  n: '\n',
+  f: '\f',
+  r: '\r',
   '"': '"',
   '\\': '\\',
 }
 
 const isEscaped = (char: string): char is keyof typeof ESCAPES => {
-  return char in ESCAPES;
+  return char in ESCAPES
 }
 
 const isUnicodeCharacter = (char: string) => {
@@ -612,9 +589,11 @@ const isControlCharacterOtherThanTab = (char: string) => {
 }
 
 export const isHexadecimal = (char: string) => {
-  return ('A' <= char && char <= 'Z') ||
+  return (
+    ('A' <= char && char <= 'Z') ||
     ('a' <= char && char <= 'z') ||
     ('0' <= char && char <= '9')
+  )
 }
 
 const isWhitespace = (char: string) => {
@@ -622,8 +601,7 @@ const isWhitespace = (char: string) => {
 }
 
 // Default option values.
-Toml.defaults = {
-} as TomlOptions
+Toml.defaults = {} as TomlOptions
 
 export { Toml }
 

@@ -2,18 +2,19 @@ const { Jsonic, Debug } = require('@jsonic/jsonic-next')
 const { Toml } = require('..')
 
 const toml = Jsonic.make()
-      .use(Debug,{
-        trace:true
-      })
-      .use(Toml,{
-      })
+  .use(Debug, {
+    trace: true,
+  })
+  .use(Toml, {})
 
 // console.dir(toml(`# foo`),{depth:null})
 
-console.dir(toml(`
+console.dir(
+  toml(`
 a="\\x68"
-`),{depth:null})
-
+`),
+  { depth: null }
+)
 
 // console.dir(toml(`
 // a.b=1
@@ -49,14 +50,11 @@ a="\\x68"
 // '''
 // `),{depth:null})
 
-
-
 // console.dir(toml(`
 // a = 1987-07-05T17:45:00.000Z
 // b = 1988-07-05T17:45:00Z
 // c = [1989-07-05T17:45:00Z]
 // `),{depth:null})
-
 
 // console.dir(toml(`
 // [[a]]
@@ -65,8 +63,6 @@ a="\\x68"
 // d=0
 
 // `),{depth:null})
-
-
 
 // a=1
 // b=2
@@ -108,7 +104,6 @@ a="\\x68"
 
 // `),{depth:null})
 
-
 // // console.log(toml(''))
 
 // console.dir(toml(`
@@ -127,8 +122,6 @@ a="\\x68"
 // [[foo]]
 // a = 11
 // b = 22
-
-
 
 // `),{depth:null})
 

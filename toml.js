@@ -20,15 +20,15 @@ const Toml = (jsonic, options) => {
                 string: {
                     // CUSTOM STRING MATCHER https://github.com/huan231/toml-nodejs }
                     // NOTE: order not needed as deep merge.
-                    make: makeTomlStringMatcher
-                }
+                    make: makeTomlStringMatcher,
+                },
             },
         },
         fixed: {
             token: {
                 '#CL': '=',
                 '#DOT': '.',
-            }
+            },
         },
         match: {
             token: {
@@ -42,56 +42,55 @@ const Toml = (jsonic, options) => {
                         // console.log(res)
                         let date = new Date(res[0]);
                         date.__toml__ = {
-                            kind: (null == res[4] ? 'local' : 'offset') + '-date' +
+                            kind: (null == res[4] ? 'local' : 'offset') +
+                                '-date' +
                                 (null == res[1] ? '' : '-time'),
                             src: res[0],
                         };
                         return date;
-                    }
+                    },
                 },
                 localtime: {
                     match: /^\d\d:\d\d(:\d\d(\.\d+)?)?/,
                     val: (res) => {
-                        let date = new Date((60 * 60 * 1000) + new Date('1970-01-01 ' + res[0]).getTime());
+                        let date = new Date(60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime());
                         date.__toml__ = {
                             kind: 'local-time',
                             src: res[0],
                         };
                         return date;
-                    }
-                }
-            }
+                    },
+                },
+            },
         },
         value: {
             def: {
-                'nan': { val: NaN },
+                nan: { val: NaN },
                 '+nan': { val: NaN },
                 '-nan': { val: NaN },
-                'inf': { val: Infinity },
+                inf: { val: Infinity },
                 '+inf': { val: Infinity },
-                '-inf': { val: -Infinity }
-            }
+                '-inf': { val: -Infinity },
+            },
         },
         tokenSet: {
             KEY: ['#ST', '#ID', null, null],
-            VAL: [, , , ,]
+            VAL: [, , , ,],
         },
         comment: {
             def: {
                 slash: null,
-                multi: null
-            }
+                multi: null,
+            },
         },
     };
     jsonic.options(jsonicOptions);
     const { ZZ, ST, NR, OS, CS, CL, DOT, ID, CA, OB } = jsonic.token;
     const KEY = [ST, NR, ID];
     jsonic.rule('toml', (rs) => {
-        rs
-            .bo(r => {
+        rs.bo((r) => {
             r.node = {};
-        })
-            .open([
+        }).open([
             { s: [KEY, CL], p: 'table', b: 2 },
             { s: [OS, KEY], p: 'table', b: 2 },
             { s: [OS, OS], p: 'table', b: 2 },
@@ -100,8 +99,7 @@ const Toml = (jsonic, options) => {
         ]);
     });
     jsonic.rule('table', (rs) => {
-        rs
-            .bo(r => {
+        rs.bo((r) => {
             r.node = r.parent.node;
         })
             .open([
@@ -113,7 +111,7 @@ const Toml = (jsonic, options) => {
                 c: (r) => 1 === r.d && 'table' !== r.prev.name,
                 p: 'dive',
                 b: 2,
-                u: { top_dive: true }
+                u: { top_dive: true },
             },
             {
                 s: [KEY, DOT],
@@ -128,11 +126,10 @@ const Toml = (jsonic, options) => {
                         r.node = last ? last : (arr.push({}), arr[arr.length - 1]);
                     }
                     else {
-                        r.node =
-                            (r.parent.node[key] = r.parent.node[key] || {});
+                        r.node = r.parent.node[key] = r.parent.node[key] || {};
                     }
                 },
-                g: 'dive,start'
+                g: 'dive,start',
             },
             {
                 s: [KEY, DOT],
@@ -148,13 +145,13 @@ const Toml = (jsonic, options) => {
                         let last = arr[arr.length - 1];
                         last = last ? last : (arr.push({}), arr[arr.length - 1]);
                         // console.log('LAST', last)
-                        r.node = (last[key] = last[key] || {});
+                        r.node = last[key] = last[key] || {};
                     }
                     else {
-                        r.node = (r.prev.node[key] = r.prev.node[key] || {});
+                        r.node = r.prev.node[key] = r.prev.node[key] || {};
                     }
                 },
-                g: 'dive'
+                g: 'dive',
             },
             {
                 s: [KEY, CS],
@@ -163,9 +160,9 @@ const Toml = (jsonic, options) => {
                 r: (r) => r.n.table_array && 'table',
                 a: (r) => {
                     let key = r.o0.val;
-                    r.parent.node[key] =
-                        (r.node = r.parent.node[key] || (r.n.table_array ? [] : {}));
-                }
+                    r.parent.node[key] = r.node =
+                        r.parent.node[key] || (r.n.table_array ? [] : {});
+                },
             },
             {
                 s: [KEY, CS],
@@ -180,14 +177,14 @@ const Toml = (jsonic, options) => {
                         let last = arr[arr.length - 1];
                         last = last ? last : (arr.push({}), arr[arr.length - 1]);
                         // console.log('LAST', last)
-                        r.node = (last[key] = last[key] || {});
+                        r.node = last[key] = last[key] || {};
                     }
                     else {
-                        r.node =
-                            (r.prev.node[key] = r.prev.node[key] || (r.n.table_array ? [] : {}));
+                        r.node = r.prev.node[key] =
+                            r.prev.node[key] || (r.n.table_array ? [] : {});
                     }
                 },
-                g: 'dive,end'
+                g: 'dive,end',
             },
             {
                 s: [CS],
@@ -195,11 +192,11 @@ const Toml = (jsonic, options) => {
                 c: { n: { table_array: 1 } },
                 a: (r) => {
                     // r.node = r.prev.node
-                    r.prev.node.push(r.node = {});
-                }
+                    r.prev.node.push((r.node = {}));
+                },
             },
         ])
-            .bc(r => {
+            .bc((r) => {
             if (!r.use.top_dive) {
                 Object.assign(r.node, r.child.node);
             }
@@ -215,8 +212,7 @@ const Toml = (jsonic, options) => {
         });
     });
     jsonic.rule('map', (rs) => {
-        rs
-            .open([
+        rs.open([
             { s: [OS], b: 1 },
             { s: [OB, KEY], b: 1, p: 'pair' },
             {
@@ -224,64 +220,55 @@ const Toml = (jsonic, options) => {
                 p: 'dive',
                 b: 2,
             },
-            { s: [ZZ] }
-        ])
-            .close([
-            { s: [OS], b: 1 },
-            { s: [ZZ] }
-        ]);
+            { s: [ZZ] },
+        ]).close([{ s: [OS], b: 1 }, { s: [ZZ] }]);
     });
     jsonic.rule('pair', (rs) => {
-        rs
-            .open([
+        rs.open([
             {
                 s: [KEY, CL],
                 p: 'val',
                 u: { pair: true },
-                a: (r) => r.use.key = r.o0.val
+                a: (r) => (r.use.key = r.o0.val),
             },
             {
                 s: [KEY, DOT],
                 p: 'dive',
                 b: 2,
-            }
-        ])
-            .close([
+            },
+        ]).close([
             { s: [KEY], b: 1, r: 'pair' },
-            { s: [OS], b: 1 }
+            { s: [OS], b: 1 },
         ]);
     });
     jsonic.rule('val', (rs) => {
-        rs
-            .close([
+        rs.close([
             { s: [KEY], b: 1 },
-            { s: [OS], b: 1 }
+            { s: [OS], b: 1 },
         ]);
     });
     jsonic.rule('elem', (rs) => {
-        rs
-            .close([
+        rs.close([
             // Ignore trailing comma.
             { s: [CA, CS], b: 1, g: 'comma' },
         ]);
     });
     jsonic.rule('dive', (rs) => {
-        rs
-            .open([
+        rs.open([
             {
                 s: [KEY, DOT],
                 p: 'dive',
                 n: { dive_key: 1 },
                 a: (r) => {
-                    r.parent.node[r.o0.val] = r.node = (r.parent.node[r.o0.val] || {});
-                }
+                    r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {};
+                },
             },
             {
                 s: [KEY, CL],
                 p: 'val',
                 n: { dive_key: 1 },
                 u: { dive_end: true },
-            }
+            },
         ])
             .bc((r) => {
             if (r.use.dive_end) {
@@ -296,7 +283,7 @@ const Toml = (jsonic, options) => {
                 c: { n: { dive_key: 1 } },
                 n: { dive_key: 0 },
             },
-            {}
+            {},
         ]);
     });
 };
@@ -311,7 +298,7 @@ function makeTomlStringMatcher() {
         let isMultiline = false;
         let begin = sI;
         let delimiter = src[sI];
-        let singleQuote = '\'' === delimiter;
+        let singleQuote = "'" === delimiter;
         let doubleQuote = '"' === delimiter;
         if (!singleQuote && !doubleQuote) {
             return;
@@ -389,7 +376,8 @@ function makeTomlStringMatcher() {
                     if (sI >= srclen) {
                         return lex.bad('unterminated_string', begin, sI);
                     }
-                    if (!isUnicodeCharacter(char) || isControlCharacterOtherThanTab(char)) {
+                    if (!isUnicodeCharacter(char) ||
+                        isControlCharacterOtherThanTab(char)) {
                         return lex.bad('unprintable', sI, sI + 1);
                     }
                     switch (delimiter) {
@@ -399,7 +387,7 @@ function makeTomlStringMatcher() {
                             continue;
                         case '"':
                             if (char === '\\') {
-                                const char = src[++cI, ++sI];
+                                const char = src[(++cI, ++sI)];
                                 // console.log('ESCAPE:' + char)
                                 if (isEscaped(char)) {
                                     value += ESCAPES[char];
@@ -431,7 +419,7 @@ function makeTomlStringMatcher() {
                                     const size = char === 'u' ? 4 : 8;
                                     let codePoint = '';
                                     for (let i = 0; i < size; i++) {
-                                        const char = src[++cI, ++sI];
+                                        const char = src[(++cI, ++sI)];
                                         if (sI >= srclen || !(0, exports.isHexadecimal)(char)) {
                                             return lex.bad('invalid_unicode', beginUnicode, sI);
                                         }
@@ -452,15 +440,15 @@ function makeTomlStringMatcher() {
                                 // to the next non-whitespace character or closing
                                 // delimiter.
                                 // https://toml.io/en/v1.0.0#string
-                                if (isMultiline && (isWhitespace(char) ||
-                                    char === '\n' ||
-                                    char === '\r')) {
+                                if (isMultiline &&
+                                    (isWhitespace(char) || char === '\n' || char === '\r')) {
                                     // while (this.iterator.take(' ', '\t', '\n')) {
                                     while ((' ' === src[sI + 1] && ++cI) ||
                                         ('\t' === src[sI + 1] && ++cI) ||
-                                        ('\n' === src[sI + 1] && (cI = 0, ++rI)) ||
-                                        ('\r' === src[sI + 1] && '\n' === src[sI + 2]
-                                            && (cI = 0, ++sI, ++rI))) {
+                                        ('\n' === src[sI + 1] && ((cI = 0), ++rI)) ||
+                                        ('\r' === src[sI + 1] &&
+                                            '\n' === src[sI + 2] &&
+                                            ((cI = 0), ++sI, ++rI))) {
                                         sI++;
                                     }
                                     continue;
@@ -484,11 +472,11 @@ function makeTomlStringMatcher() {
     };
 }
 const ESCAPES = {
-    'b': '\b',
-    't': '\t',
-    'n': '\n',
-    'f': '\f',
-    'r': '\r',
+    b: '\b',
+    t: '\t',
+    n: '\n',
+    f: '\f',
+    r: '\r',
     '"': '"',
     '\\': '\\',
 };
@@ -505,9 +493,9 @@ const isControlCharacterOtherThanTab = (char) => {
     return isControlCharacter(char) && char !== '\t';
 };
 const isHexadecimal = (char) => {
-    return ('A' <= char && char <= 'Z') ||
+    return (('A' <= char && char <= 'Z') ||
         ('a' <= char && char <= 'z') ||
-        ('0' <= char && char <= '9');
+        ('0' <= char && char <= '9'));
 };
 exports.isHexadecimal = isHexadecimal;
 const isWhitespace = (char) => {
