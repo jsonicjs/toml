@@ -1,5 +1,7 @@
-const { Jsonic, Debug } = require('@jsonic/jsonic-next')
-const { Toml } = require('..')
+const { Jsonic } = require('@jsonic/jsonic-next')
+const { Debug } = require('@jsonic/jsonic-next/debug')
+
+const { Toml } = require('../toml')
 
 const toml = Jsonic.make()
   .use(Debug, {
@@ -11,10 +13,25 @@ const toml = Jsonic.make()
 
 console.dir(
   toml(`
-a="\\x68"
-`),
-  { depth: null }
-)
+# TOML 1.1 supports Unicode for bare keys.
+
+€ = 'Euro'
+😂 = "rofl"
+a‍b = "zwj"
+ÅÅ = "U+00C5 U+0041 U+030A"
+
+[中文]
+中文 = {中文 = "Chinese language"}
+
+[[tiếng-Việt]]
+tiəŋ˧˦.viət̚˧˨ʔ = "north"
+
+[[tiếng-Việt]]
+tiəŋ˦˧˥.viək̚˨˩ʔ = "central"
+
+`), { depth: null })
+
+//a="\\x68"
 
 // console.dir(toml(`
 // a.b=1

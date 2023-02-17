@@ -3,7 +3,8 @@
 import Fs from 'fs'
 import Path from 'path'
 
-import { Jsonic, Debug } from '@jsonic/jsonic-next'
+import { Jsonic } from '@jsonic/jsonic-next'
+import { Debug } from '@jsonic/jsonic-next/debug'
 import { Toml } from '../toml'
 
 

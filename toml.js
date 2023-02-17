@@ -2,9 +2,10 @@
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Toml = exports.isHexadecimal = void 0;
+// TODO: unicode keys
 // NOTE: Good example of use case for `r` control in open rule, where
 // close state only gets called on last rule.
-// Import Jsonic types used by plugins.
+// Import Jsonic types used by plugin.
 const jsonic_next_1 = require("@jsonic/jsonic-next");
 // Plugin implementation.
 const Toml = (jsonic, options) => {
@@ -85,7 +86,7 @@ const Toml = (jsonic, options) => {
         },
     };
     jsonic.options(jsonicOptions);
-    const { ZZ, ST, NR, OS, CS, CL, DOT, ID, CA, OB } = jsonic.token;
+    const { ZZ, ST, NR, OS, CS, CL, DOT, ID, CA, OB, CB } = jsonic.token;
     const KEY = [ST, NR, ID];
     jsonic.rule('toml', (rs) => {
         rs.bo((r) => {
@@ -214,6 +215,13 @@ const Toml = (jsonic, options) => {
     jsonic.rule('map', (rs) => {
         rs.open([
             { s: [OS], b: 1 },
+            // Pair from implicit map.
+            {
+                s: [KEY, CL],
+                c: (r) => 'table' === r.parent.name,
+                p: 'pair',
+                b: 2
+            },
             { s: [OB, KEY], b: 1, p: 'pair' },
             {
                 s: [KEY, DOT],
@@ -238,7 +246,14 @@ const Toml = (jsonic, options) => {
             },
         ]).close([
             { s: [KEY], b: 1, r: 'pair' },
+            { s: [CA, KEY], b: 1, r: 'pair' },
             { s: [OS], b: 1 },
+            // Ignore trailing comma at end of map.
+            {
+                s: [CA, CB],
+                c: { n: { pk: 0 } },
+                b: 1,
+            },
         ]);
     });
     jsonic.rule('val', (rs) => {

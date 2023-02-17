@@ -3,6 +3,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "module": "commonjs",
+    "moduleResolution": "nodenext",
     "noEmitOnError": true,
     "noImplicitAny": true,
     "resolveJsonModule": true,
