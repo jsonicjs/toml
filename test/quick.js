@@ -29,7 +29,9 @@ tiəŋ˧˦.viət̚˧˨ʔ = "north"
 [[tiếng-Việt]]
 tiəŋ˦˧˥.viək̚˨˩ʔ = "central"
 
-`), { depth: null })
+`),
+  { depth: null }
+)
 
 //a="\\x68"
 

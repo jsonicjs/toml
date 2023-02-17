@@ -220,7 +220,7 @@ const Toml = (jsonic, options) => {
                 s: [KEY, CL],
                 c: (r) => 'table' === r.parent.name,
                 p: 'pair',
-                b: 2
+                b: 2,
             },
             { s: [OB, KEY], b: 1, p: 'pair' },
             {

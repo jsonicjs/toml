@@ -2,7 +2,6 @@
 
 // TODO: unicode keys
 
-
 // NOTE: Good example of use case for `r` control in open rule, where
 // close state only gets called on last rule.
 
@@ -255,7 +254,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         s: [KEY, CL],
         c: (r) => 'table' === r.parent.name,
         p: 'pair',
-        b: 2
+        b: 2,
       },
 
       { s: [OB, KEY], b: 1, p: 'pair' },
@@ -386,7 +385,7 @@ function makeTomlStringMatcher() {
 
     let value = ''
 
-    for (; sI < srclen - 1;) {
+    for (; sI < srclen - 1; ) {
       ++sI
       ++cI
 
