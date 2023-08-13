@@ -8,6 +8,10 @@ import { Debug } from '@jsonic/jsonic-next/debug'
 import { Toml } from '../toml'
 
 
+// NOTE: install toml-test repo to run
+// npm run install-toml-test
+
+
 const Fixtures = require('./toml-fixtures')
 
 

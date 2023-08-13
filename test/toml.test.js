@@ -8,6 +8,8 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const jsonic_next_1 = require("@jsonic/jsonic-next");
 const toml_1 = require("../toml");
+// NOTE: install toml-test repo to run
+// npm run install-toml-test
 const Fixtures = require('./toml-fixtures');
 describe('toml', () => {
     test('happy', async () => {

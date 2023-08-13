@@ -71,7 +71,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           match: /^\d\d:\d\d(:\d\d(\.\d+)?)?/,
           val: (res: any) => {
             let date: any = new Date(
-              60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime()
+              60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime(),
             )
             date.__toml__ = {
               kind: 'local-time',

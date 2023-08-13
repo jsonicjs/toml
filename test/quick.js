@@ -30,7 +30,7 @@ tiəŋ˧˦.viət̚˧˨ʔ = "north"
 tiəŋ˦˧˥.viək̚˨˩ʔ = "central"
 
 `),
-  { depth: null }
+  { depth: null },
 )
 
 //a="\\x68"
