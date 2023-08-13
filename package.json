@@ -1,6 +1,6 @@
 {
   "name": "@jsonic/toml",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
   "main": "toml.js",
   "type": "commonjs",
@@ -51,6 +51,6 @@
     "typescript": "^5.1.6"
   },
   "peerDependencies": {
-    "@jsonic/jsonic-next": ">=2.10.0"
+    "@jsonic/jsonic-next": ">=2.11.0"
   }
 }

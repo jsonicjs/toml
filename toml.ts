@@ -144,7 +144,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         {
           s: [KEY, DOT],
           r: 'table',
-          c: { n: { table_dive: 0 } },
+          // c: { n: { table_dive: 0 } },
+          c: (r) => r.lte('table_dive'),
           n: { table_dive: 1 },
           a: (r) => {
             let key = r.o0.val
@@ -183,7 +184,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
 
         {
           s: [KEY, CS],
-          c: { n: { table_dive: 0 } },
+          // c: { n: { table_dive: 0 } },
+          c: (r) => r.lte('table_dive'),
           p: (r) => !r.n.table_array && 'map',
           r: (r) => r.n.table_array && 'table',
           a: (r) => {
@@ -219,7 +221,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         {
           s: [CS],
           p: 'map',
-          c: { n: { table_array: 1 } },
+          // c: { n: { table_array: 1 } },
+          c: (r) => r.lte('table_array', 1),
           a: (r) => {
             // r.node = r.prev.node
             r.prev.node.push((r.node = {}))
@@ -288,7 +291,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       // Ignore trailing comma at end of map.
       {
         s: [CA, CB],
-        c: { n: { pk: 0 } },
+        // c: { n: { pk: 0 } },
+        c: (r) => r.lte('pk'),
         b: 1,
       },
     ])
@@ -335,7 +339,8 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
           s: [KEY, DOT],
           b: 2,
           r: 'dive',
-          c: { n: { dive_key: 1 } },
+          // c: { n: { dive_key: 1 } },
+          c: (r) => r.lte('dive_key', 1),
           n: { dive_key: 0 },
         },
         {},
