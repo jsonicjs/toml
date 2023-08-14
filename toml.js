@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Toml = exports.isHexadecimal = void 0;
 // TODO: unicode keys
@@ -8,7 +8,7 @@ exports.Toml = exports.isHexadecimal = void 0;
 // Import Jsonic types used by plugin.
 const jsonic_next_1 = require("@jsonic/jsonic-next");
 // Plugin implementation.
-const Toml = (jsonic, options) => {
+const Toml = (jsonic, _options) => {
     // Jsonic option overrides.
     let jsonicOptions = {
         rule: {
@@ -201,7 +201,7 @@ const Toml = (jsonic, options) => {
             },
         ])
             .bc((r) => {
-            if (!r.use.top_dive) {
+            if (!r.u.top_dive) {
                 Object.assign(r.node, r.child.node);
             }
         })
@@ -240,7 +240,7 @@ const Toml = (jsonic, options) => {
                 s: [KEY, CL],
                 p: 'val',
                 u: { pair: true },
-                a: (r) => (r.use.key = r.o0.val),
+                a: (r) => (r.u.key = r.o0.val),
             },
             {
                 s: [KEY, DOT],
@@ -290,7 +290,7 @@ const Toml = (jsonic, options) => {
             },
         ])
             .bc((r) => {
-            if (r.use.dive_end) {
+            if (r.u.dive_end) {
                 r.node[r.o0.val] = r.child.node;
             }
         })

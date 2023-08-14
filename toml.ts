@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 // TODO: unicode keys
 
@@ -6,23 +6,13 @@
 // close state only gets called on last rule.
 
 // Import Jsonic types used by plugin.
-import {
-  Jsonic,
-  Rule,
-  RuleSpec,
-  Plugin,
-  Context,
-  Config,
-  Options,
-  Lex,
-  EMPTY,
-} from '@jsonic/jsonic-next'
+import { Jsonic, Rule, RuleSpec, Plugin, Lex, EMPTY } from '@jsonic/jsonic-next'
 
 // See defaults below for commentary.
 type TomlOptions = {}
 
 // Plugin implementation.
-const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
+const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
   // Jsonic option overrides.
   let jsonicOptions: any = {
     rule: {
@@ -231,7 +221,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       ])
 
       .bc((r) => {
-        if (!r.use.top_dive) {
+        if (!r.u.top_dive) {
           Object.assign(r.node, r.child.node)
         }
       })
@@ -276,7 +266,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
         s: [KEY, CL],
         p: 'val',
         u: { pair: true },
-        a: (r: Rule) => (r.use.key = r.o0.val),
+        a: (r: Rule) => (r.u.key = r.o0.val),
       },
       {
         s: [KEY, DOT],
@@ -330,7 +320,7 @@ const Toml: Plugin = (jsonic: Jsonic, options: TomlOptions) => {
       },
     ])
       .bc((r) => {
-        if (r.use.dive_end) {
+        if (r.u.dive_end) {
           r.node[r.o0.val] = r.child.node
         }
       })
