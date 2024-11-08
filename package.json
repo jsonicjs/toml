@@ -2,9 +2,9 @@
   "name": "@jsonic/toml",
   "version": "0.6.0",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
-  "main": "toml.js",
+  "main": "dist/toml.js",
   "type": "commonjs",
-  "types": "toml.d.ts",
+  "types": "dist/toml.d.ts",
   "homepage": "https://github.com/jsonicjs/toml",
   "keywords": [
     "pattern",
@@ -19,12 +19,14 @@
     "url": "git://github.com/jsonicjs/toml.git"
   },
   "scripts": {
-    "test": "jest --coverage",
-    "test-some": "jest -t",
-    "test-watch": "jest --coverage --watchAll",
-    "watch": "tsc -w -d",
+    "test": "node --enable-source-maps --test dist-test",
+    "test22": "node --enable-source-maps --test \"dist-test/*.test.js\"",
+    "test-cov": "rm -rf ./coverage && mkdir -p ./coverage && node --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --enable-source-maps --test \"dist-test/*.test.js\"",
+    "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test dist-test",
+    "watch": "tsc --build src test -w",
+    "build": "tsc --build src test",
+    "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
     "doc": "jsonic-doc",
-    "build": "tsc -d",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
     "clean": "rm -rf node_modules yarn.lock package-lock.json test/toml-test",
@@ -35,17 +37,14 @@
   },
   "license": "MIT",
   "files": [
-    "*.ts",
-    "*.js",
-    "*.map",
+    "src",
+    "dist",
     "LICENSE"
   ],
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "es-jest": "^2.1.0",
-    "esbuild": "^0.24.0",
-    "jest": "^29.7.0",
-    "prettier": "^3.3.3",
+    "@hapi/code": "^9.0.3",
+    "@jsonic/doc": "^0.0.9",
+    "@types/node": "^22.9.0",
     "typescript": "^5.6.3"
   },
   "peerDependencies": {

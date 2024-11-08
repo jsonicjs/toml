@@ -1,25 +1,28 @@
 /* Copyright (c) 2022-2024 Richard Rodger and other contributors, MIT License */
 
-import Fs from 'fs'
-import Path from 'path'
+import { test, describe } from 'node:test'
+import Fs from 'node:fs'
+import Path from 'node:path'
+
+import { expect } from '@hapi/code'
 
 import { Jsonic } from 'jsonic'
 // import { Debug } from 'jsonic/debug'
-import { Toml } from '../toml'
+import { Toml } from '..'
 
 
 // NOTE: install toml-test repo to run
 // npm run install-toml-test
 
 
-const Fixtures = require('./toml-fixtures')
+const Fixtures = require('../test/toml-fixtures')
 
 
 describe('toml', () => {
 
   test('happy', async () => {
     const toml = makeToml()
-    expect(toml(`a=1`, { xlog: -1 })).toEqual({ a: 1 })
+    expect(toml(`a=1`, { xlog: -1 })).equal({ a: 1 })
   })
 
 
@@ -37,11 +40,11 @@ describe('toml', () => {
         }
         let raw = null != spec.rawref ? Fixtures[spec.rawref].raw : spec.raw
         let out = parser(raw)
-        expect(out).toEqual(spec.out)
+        expect(out).equal(spec.out)
       }
       catch (e: any) {
         if (spec.err) {
-          expect(spec.err).toEqual(e.code)
+          expect(spec.err).equal(e.code)
         }
         else {
           console.error('FIXTURE: ' + name)
@@ -55,7 +58,7 @@ describe('toml', () => {
   test('toml-valid', async () => {
     const toml = Jsonic.make().use(Toml)
 
-    let root = __dirname + '/toml-test/tests/valid'
+    let root = __dirname + '/../test/toml-test/tests/valid'
 
     let found = find(root, [])
 
@@ -66,7 +69,7 @@ describe('toml', () => {
         // console.log('TEST', test.name)
         test.out = toml(test.toml)
         test.norm = norm(test.out, test.name)
-        expect(test.norm).toEqual(test.json)
+        expect(test.norm).equal(test.json)
         // console.log('PASS', test.name)
         counts.pass++
       }

@@ -1,7 +1,7 @@
 const { Jsonic } = require('@jsonic/jsonic-next')
 const { Debug } = require('@jsonic/jsonic-next/debug')
 
-const { Toml } = require('../toml')
+const { Toml } = require('..')
 
 const toml = Jsonic.make()
   .use(Debug, {

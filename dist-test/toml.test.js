@@ -4,21 +4,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
+const node_test_1 = require("node:test");
+const node_fs_1 = __importDefault(require("node:fs"));
+const node_path_1 = __importDefault(require("node:path"));
+const code_1 = require("@hapi/code");
 const jsonic_1 = require("jsonic");
 // import { Debug } from 'jsonic/debug'
-const toml_1 = require("../toml");
+const __1 = require("..");
 // NOTE: install toml-test repo to run
 // npm run install-toml-test
-const Fixtures = require('./toml-fixtures');
-describe('toml', () => {
-    test('happy', async () => {
+const Fixtures = require('../test/toml-fixtures');
+(0, node_test_1.describe)('toml', () => {
+    (0, node_test_1.test)('happy', async () => {
         const toml = makeToml();
-        expect(toml(`a=1`, { xlog: -1 })).toEqual({ a: 1 });
+        (0, code_1.expect)(toml(`a=1`, { xlog: -1 })).equal({ a: 1 });
     });
-    test('fixtures', async () => {
-        const toml = jsonic_1.Jsonic.make().use(toml_1.Toml);
+    (0, node_test_1.test)('fixtures', async () => {
+        const toml = jsonic_1.Jsonic.make().use(__1.Toml);
         Object.entries(Fixtures).map((fixture) => {
             let name = fixture[0];
             let spec = fixture[1];
@@ -26,15 +28,15 @@ describe('toml', () => {
                 let parser = toml;
                 if (spec.opt) {
                     let j = spec.make ? spec.make(jsonic_1.Jsonic) : jsonic_1.Jsonic.make();
-                    parser = j.use(toml_1.Toml, spec.opt);
+                    parser = j.use(__1.Toml, spec.opt);
                 }
                 let raw = null != spec.rawref ? Fixtures[spec.rawref].raw : spec.raw;
                 let out = parser(raw);
-                expect(out).toEqual(spec.out);
+                (0, code_1.expect)(out).equal(spec.out);
             }
             catch (e) {
                 if (spec.err) {
-                    expect(spec.err).toEqual(e.code);
+                    (0, code_1.expect)(spec.err).equal(e.code);
                 }
                 else {
                     console.error('FIXTURE: ' + name);
@@ -43,9 +45,9 @@ describe('toml', () => {
             }
         });
     });
-    test('toml-valid', async () => {
-        const toml = jsonic_1.Jsonic.make().use(toml_1.Toml);
-        let root = __dirname + '/toml-test/tests/valid';
+    (0, node_test_1.test)('toml-valid', async () => {
+        const toml = jsonic_1.Jsonic.make().use(__1.Toml);
+        let root = __dirname + '/../test/toml-test/tests/valid';
         let found = find(root, []);
         let fails = [];
         let counts = { pass: 0, fail: 0 };
@@ -54,7 +56,7 @@ describe('toml', () => {
                 // console.log('TEST', test.name)
                 test.out = toml(test.toml);
                 test.norm = norm(test.out, test.name);
-                expect(test.norm).toEqual(test.json);
+                (0, code_1.expect)(test.norm).equal(test.json);
                 // console.log('PASS', test.name)
                 counts.pass++;
             }
@@ -167,12 +169,12 @@ describe('toml', () => {
 function makeToml() {
     return jsonic_1.Jsonic.make()
         // .use(Debug)
-        .use(toml_1.Toml);
+        .use(__1.Toml);
 }
 function find(parent, found) {
-    for (let file of fs_1.default.readdirSync(parent)) {
-        let filepath = path_1.default.join(parent, file);
-        let desc = fs_1.default.lstatSync(filepath);
+    for (let file of node_fs_1.default.readdirSync(parent)) {
+        let filepath = node_path_1.default.join(parent, file);
+        let desc = node_fs_1.default.lstatSync(filepath);
         if (desc.isDirectory()) {
             find(filepath, found);
         }
@@ -180,9 +182,9 @@ function find(parent, found) {
             let m = file.match(/^(.+)\.toml$/);
             if (m && m[1]) {
                 found.push({
-                    name: path_1.default.join(parent, m[1]),
-                    json: JSON.parse(fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.json')).toString()),
-                    toml: fs_1.default.readFileSync(path_1.default.join(parent, m[1] + '.toml')).toString()
+                    name: node_path_1.default.join(parent, m[1]),
+                    json: JSON.parse(node_fs_1.default.readFileSync(node_path_1.default.join(parent, m[1] + '.json')).toString()),
+                    toml: node_fs_1.default.readFileSync(node_path_1.default.join(parent, m[1] + '.toml')).toString()
                 });
             }
         }
