@@ -1,10 +1,9 @@
 {
   "name": "@jsonic/toml",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
   "main": "toml.js",
   "type": "commonjs",
-  "browser": "toml.min.js",
   "types": "toml.d.ts",
   "homepage": "https://github.com/jsonicjs/toml",
   "keywords": [
@@ -25,7 +24,7 @@
     "test-watch": "jest --coverage --watchAll",
     "watch": "tsc -w -d",
     "doc": "jsonic-doc",
-    "build": "tsc -d && cp toml.js toml.min.js && browserify -o toml.min.js -e toml.js -s @JsonicToml -im -i assert -p tinyify",
+    "build": "tsc -d",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
     "clean": "rm -rf node_modules yarn.lock package-lock.json test/toml-test",
@@ -43,16 +42,13 @@
   ],
   "devDependencies": {
     "@types/jest": "^29.5.14",
-    "browserify": "^17.0.1",
     "es-jest": "^2.1.0",
     "esbuild": "^0.24.0",
     "jest": "^29.7.0",
     "prettier": "^3.3.3",
-    "tinyify": "^4.0.0",
-    "typescript": "^5.6.3",
-    "@jsonic/jsonic-next": ">=2.13.0"
+    "typescript": "^5.6.3"
   },
   "peerDependencies": {
-    "@jsonic/jsonic-next": ">=2.13.0"
+    "jsonic": ">=2.15.2"
   }
 }

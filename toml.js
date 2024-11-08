@@ -6,7 +6,7 @@ exports.Toml = exports.isHexadecimal = void 0;
 // NOTE: Good example of use case for `r` control in open rule, where
 // close state only gets called on last rule.
 // Import Jsonic types used by plugin.
-const jsonic_next_1 = require("@jsonic/jsonic-next");
+const jsonic_1 = require("jsonic");
 // Plugin implementation.
 const Toml = (jsonic, _options) => {
     // Jsonic option overrides.
@@ -327,7 +327,7 @@ function makeTomlStringMatcher() {
             if (delimiter !== src[sI + 2]) {
                 pnt.sI = sI + 2;
                 pnt.cI = cI + 2;
-                return lex.token('#ST', jsonic_next_1.EMPTY, jsonic_next_1.EMPTY, pnt);
+                return lex.token('#ST', jsonic_1.EMPTY, jsonic_1.EMPTY, pnt);
             }
             sI += 2;
             cI += 2;

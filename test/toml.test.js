@@ -1,12 +1,13 @@
 "use strict";
-/* Copyright (c) 2022 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2022-2024 Richard Rodger and other contributors, MIT License */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const jsonic_next_1 = require("@jsonic/jsonic-next");
+const jsonic_1 = require("jsonic");
+// import { Debug } from 'jsonic/debug'
 const toml_1 = require("../toml");
 // NOTE: install toml-test repo to run
 // npm run install-toml-test
@@ -17,14 +18,14 @@ describe('toml', () => {
         expect(toml(`a=1`, { xlog: -1 })).toEqual({ a: 1 });
     });
     test('fixtures', async () => {
-        const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
+        const toml = jsonic_1.Jsonic.make().use(toml_1.Toml);
         Object.entries(Fixtures).map((fixture) => {
             let name = fixture[0];
             let spec = fixture[1];
             try {
                 let parser = toml;
                 if (spec.opt) {
-                    let j = spec.make ? spec.make(jsonic_next_1.Jsonic) : jsonic_next_1.Jsonic.make();
+                    let j = spec.make ? spec.make(jsonic_1.Jsonic) : jsonic_1.Jsonic.make();
                     parser = j.use(toml_1.Toml, spec.opt);
                 }
                 let raw = null != spec.rawref ? Fixtures[spec.rawref].raw : spec.raw;
@@ -43,7 +44,7 @@ describe('toml', () => {
         });
     });
     test('toml-valid', async () => {
-        const toml = jsonic_next_1.Jsonic.make().use(toml_1.Toml);
+        const toml = jsonic_1.Jsonic.make().use(toml_1.Toml);
         let root = __dirname + '/toml-test/tests/valid';
         let found = find(root, []);
         let fails = [];
@@ -164,7 +165,7 @@ describe('toml', () => {
     });
 });
 function makeToml() {
-    return jsonic_next_1.Jsonic.make()
+    return jsonic_1.Jsonic.make()
         // .use(Debug)
         .use(toml_1.Toml);
 }

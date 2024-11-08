@@ -1,10 +1,10 @@
-/* Copyright (c) 2022 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2022-2024 Richard Rodger and other contributors, MIT License */
 
 import Fs from 'fs'
 import Path from 'path'
 
-import { Jsonic } from '@jsonic/jsonic-next'
-import { Debug } from '@jsonic/jsonic-next/debug'
+import { Jsonic } from 'jsonic'
+// import { Debug } from 'jsonic/debug'
 import { Toml } from '../toml'
 
 

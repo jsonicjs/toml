@@ -6,7 +6,7 @@
 // close state only gets called on last rule.
 
 // Import Jsonic types used by plugin.
-import { Jsonic, Rule, RuleSpec, Plugin, Lex, EMPTY } from '@jsonic/jsonic-next'
+import { Jsonic, Rule, RuleSpec, Plugin, Lex, EMPTY } from 'jsonic'
 
 // See defaults below for commentary.
 type TomlOptions = {}
@@ -101,7 +101,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
   const KEY = [ST, NR, ID]
 
   jsonic.rule('toml', (rs: RuleSpec) => {
-    rs.bo((r) => {
+    rs.bo((r: any) => {
       r.node = {}
     }).open([
       { s: [KEY, CL], p: 'table', b: 2 },
@@ -113,7 +113,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
   })
 
   jsonic.rule('table', (rs: RuleSpec) => {
-    rs.bo((r) => {
+    rs.bo((r: any) => {
       r.node = r.parent.node
     })
       .open([
@@ -125,7 +125,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
 
         {
           s: [KEY, DOT],
-          c: (r) => 1 === r.d && 'table' !== r.prev.name,
+          c: (r: any) => 1 === r.d && 'table' !== r.prev.name,
           p: 'dive',
           b: 2,
           u: { top_dive: true },
@@ -135,9 +135,9 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
           s: [KEY, DOT],
           r: 'table',
           // c: { n: { table_dive: 0 } },
-          c: (r) => r.lte('table_dive'),
+          c: (r: any) => r.lte('table_dive'),
           n: { table_dive: 1 },
-          a: (r) => {
+          a: (r: any) => {
             let key = r.o0.val
             if (r.n.table_array && Array.isArray(r.parent.node[key])) {
               let arr = r.parent.node[key]
@@ -154,7 +154,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
           s: [KEY, DOT],
           r: 'table',
           n: { table_dive: 1 },
-          a: (r) => {
+          a: (r: any) => {
             let key = r.o0.val
             // console.log('KEY', key, r.n.table_array)
             // console.log('PREV', r.prev.node)
@@ -175,10 +175,10 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
         {
           s: [KEY, CS],
           // c: { n: { table_dive: 0 } },
-          c: (r) => r.lte('table_dive'),
-          p: (r) => !r.n.table_array && 'map',
-          r: (r) => r.n.table_array && 'table',
-          a: (r) => {
+          c: (r: any) => r.lte('table_dive'),
+          p: (r: any) => !r.n.table_array && 'map',
+          r: (r: any) => r.n.table_array && 'table',
+          a: (r: any) => {
             let key = r.o0.val
             r.parent.node[key] = r.node =
               r.parent.node[key] || (r.n.table_array ? [] : {})
@@ -187,9 +187,9 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
 
         {
           s: [KEY, CS],
-          p: (r) => !r.n.table_array && 'map',
-          r: (r) => r.n.table_array && 'table',
-          a: (r) => {
+          p: (r: any) => !r.n.table_array && 'map',
+          r: (r: any) => r.n.table_array && 'table',
+          a: (r: any) => {
             let key = r.o0.val
             // console.log('DIVE END', key, r.prev.node)
 
@@ -212,15 +212,15 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
           s: [CS],
           p: 'map',
           // c: { n: { table_array: 1 } },
-          c: (r) => r.lte('table_array', 1),
-          a: (r) => {
+          c: (r: any) => r.lte('table_array', 1),
+          a: (r: any) => {
             // r.node = r.prev.node
             r.prev.node.push((r.node = {}))
           },
         },
       ])
 
-      .bc((r) => {
+      .bc((r: any) => {
         if (!r.u.top_dive) {
           Object.assign(r.node, r.child.node)
         }
@@ -232,7 +232,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
         { s: [ZZ] },
       ])
 
-      .ac((_rule, _ctx, next) => {
+      .ac((_rule: any, _ctx: any, next: any) => {
         next.n.table_dive = 0
         next.n.table_array = 0
       })
@@ -245,7 +245,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       // Pair from implicit map.
       {
         s: [KEY, CL],
-        c: (r) => 'table' === r.parent.name,
+        c: (r: any) => 'table' === r.parent.name,
         p: 'pair',
         b: 2,
       },
@@ -282,7 +282,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       {
         s: [CA, CB],
         // c: { n: { pk: 0 } },
-        c: (r) => r.lte('pk'),
+        c: (r: any) => r.lte('pk'),
         b: 1,
       },
     ])
@@ -302,13 +302,13 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
     ])
   })
 
-  jsonic.rule('dive', (rs) => {
+  jsonic.rule('dive', (rs: any) => {
     rs.open([
       {
         s: [KEY, DOT],
         p: 'dive',
         n: { dive_key: 1 },
-        a: (r) => {
+        a: (r: any) => {
           r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {}
         },
       },
@@ -319,7 +319,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
         u: { dive_end: true },
       },
     ])
-      .bc((r) => {
+      .bc((r: any) => {
         if (r.u.dive_end) {
           r.node[r.o0.val] = r.child.node
         }
@@ -330,7 +330,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
           b: 2,
           r: 'dive',
           // c: { n: { dive_key: 1 } },
-          c: (r) => r.lte('dive_key', 1),
+          c: (r: any) => r.lte('dive_key', 1),
           n: { dive_key: 0 },
         },
         {},
