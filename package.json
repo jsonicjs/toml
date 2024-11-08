@@ -1,6 +1,6 @@
 {
   "name": "@jsonic/toml",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
   "main": "dist/toml.js",
   "type": "commonjs",
@@ -25,11 +25,10 @@
     "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test dist-test",
     "watch": "tsc --build src test -w",
     "build": "tsc --build src test",
-    "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
-    "doc": "jsonic-doc",
-    "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
-    "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
     "clean": "rm -rf node_modules yarn.lock package-lock.json test/toml-test",
+    "doc": "jsonic-doc",
+    "prettier": "prettier --write --no-semi --single-quote src/*.ts test/*.js",
+    "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
     "reset": "npm run clean && npm i && npm run install-toml-test && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
@@ -45,6 +44,7 @@
     "@hapi/code": "^9.0.3",
     "@jsonic/doc": "^0.0.9",
     "@types/node": "^22.9.0",
+    "prettier": "^3.3.3",
     "typescript": "^5.6.3"
   },
   "peerDependencies": {
