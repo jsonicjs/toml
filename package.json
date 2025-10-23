@@ -1,6 +1,6 @@
 {
   "name": "@jsonic/toml",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
   "main": "dist/toml.js",
   "type": "commonjs",
@@ -19,8 +19,7 @@
     "url": "git://github.com/jsonicjs/toml.git"
   },
   "scripts": {
-    "test": "node --enable-source-maps --test dist-test",
-    "test22": "node --enable-source-maps --test \"dist-test/*.test.js\"",
+    "test": "node --enable-source-maps --test \"dist-test/*.test.js\"",
     "test-cov": "rm -rf ./coverage && mkdir -p ./coverage && node --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --enable-source-maps --test \"dist-test/*.test.js\"",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test dist-test",
     "watch": "tsc --build src test -w",
@@ -43,11 +42,11 @@
   "devDependencies": {
     "@hapi/code": "^9.0.3",
     "@jsonic/doc": "^0.0.9",
-    "@types/node": "^22.9.0",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
+    "@types/node": "^24.9.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "jsonic": ">=2.15.2"
+    "jsonic": ">=2"
   }
 }
