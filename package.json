@@ -1,17 +1,16 @@
 {
   "name": "@jsonic/toml",
   "version": "0.8.0",
-  "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
+  "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support TOML syntax.",
   "main": "dist/toml.js",
   "type": "commonjs",
   "types": "dist/toml.d.ts",
   "homepage": "https://github.com/jsonicjs/toml",
   "keywords": [
-    "pattern",
-    "matcher",
-    "object",
-    "property",
-    "json"
+    "json",
+    "jsonic",
+    "parser",
+    "toml"
   ],
   "author": "Richard Rodger (http://richardrodger.com)",
   "repository": {
@@ -20,18 +19,15 @@
   },
   "scripts": {
     "test": "node --enable-source-maps --test \"dist-test/*.test.js\"",
-    "test-cov": "rm -rf ./coverage && mkdir -p ./coverage && node --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --enable-source-maps --test \"dist-test/*.test.js\"",
-    "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test dist-test",
+    "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test \"dist-test/*.test.js\"",
     "watch": "tsc --build src test -w",
     "build": "tsc --build src test",
-    "clean": "rm -rf node_modules yarn.lock package-lock.json test/toml-test",
+    "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
     "doc": "jsonic-doc",
-    "prettier": "prettier --write --no-semi --single-quote src/*.ts test/*.js",
-    "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
-    "reset": "npm run clean && npm i && npm run install-toml-test && npm run build && npm test",
+    "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
-    "repo-publish-quick": "npm run prettier && npm run build && npm run test && npm run doc && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org "
+    "repo-publish-quick": "npm run build && npm run test && npm run doc && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org "
   },
   "license": "MIT",
   "files": [
@@ -42,8 +38,7 @@
   "devDependencies": {
     "@hapi/code": "^9.0.3",
     "@jsonic/doc": "^0.0.9",
-    "@types/node": "^24.9.1",
-    "prettier": "^3.6.2",
+    "@types/node": "^25.4.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

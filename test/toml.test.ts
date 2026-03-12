@@ -1,4 +1,4 @@
-/* Copyright (c) 2022-2024 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2022-2025 Richard Rodger and other contributors, MIT License */
 
 import { test, describe } from 'node:test'
 import Fs from 'node:fs'
@@ -8,7 +8,7 @@ import { expect } from '@hapi/code'
 
 import { Jsonic } from 'jsonic'
 // import { Debug } from 'jsonic/debug'
-import { Toml } from '..'
+import { Toml } from '../dist/toml'
 
 
 // NOTE: install toml-test repo to run
@@ -55,10 +55,15 @@ describe('toml', () => {
   })
 
 
-  test('toml-valid', async () => {
+  test('toml-valid', async (t) => {
     const toml = Jsonic.make().use(Toml)
 
     let root = __dirname + '/../test/toml-test/tests/valid'
+
+    if (!Fs.existsSync(root)) {
+      t.skip('toml-test not installed')
+      return
+    }
 
     let found = find(root, [])
 
