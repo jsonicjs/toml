@@ -1,0 +1,4 @@
+input	expected
+a = 	ERROR:unexpected
+= 1	ERROR:unexpected
+"unterminated	ERROR:unexpected

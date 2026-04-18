@@ -1,0 +1,12 @@
+input	expected
+a = 1	{"a":1}
+a = -1	{"a":-1}
+a = 0	{"a":0}
+a = 1.5	{"a":1.5}
+a = -1.5	{"a":-1.5}
+a = true	{"a":true}
+a = false	{"a":false}
+a = "x"	{"a":"x"}
+a = 'y'	{"a":"y"}
+a = ""	{"a":""}
+a = ''	{"a":""}
