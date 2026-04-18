@@ -28,6 +28,8 @@ coverage
 package-lock.json
 yarn.lock
 
+dist
+dist-test
 *.tsbuildinfo
 
 test/toml-test
