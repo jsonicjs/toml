@@ -1,341 +1,325 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
-
-// TODO: unicode keys
-
-// NOTE: Good example of use case for `r` control in open rule, where
-// close state only gets called on last rule.
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 // Import Jsonic types used by plugin.
-import { Jsonic, Rule, RuleSpec, Plugin, Lex, EMPTY } from 'jsonic'
+import { Jsonic, Rule, Lex, Plugin, EMPTY } from 'jsonic'
 
 // See defaults below for commentary.
 type TomlOptions = {}
 
+// --- BEGIN EMBEDDED toml-grammar.jsonic ---
+const grammarText = `
+# TOML Grammar Definition
+# Parsed by a standard Jsonic instance and passed to jsonic.grammar()
+# Function references (@ prefixed) are resolved against the refs map.
+# Regex references (@/pattern/flags) are resolved to RegExp instances.
+
+{
+  options: rule: { start: toml exclude: jsonic }
+  options: lex: {
+    emptyResult: {}
+    match: string: make: '@make-toml-string-matcher'
+  }
+  options: fixed: token: { '#CL': '=' '#DOT': '.' }
+  options: match: {
+    token: { '#ID': '@/^[a-zA-Z0-9_-]+/' }
+    value: {
+      isodate: {
+        match: '@/^\\\\d\\\\d\\\\d\\\\d-\\\\d\\\\d-\\\\d\\\\d([Tt ]\\\\d\\\\d:\\\\d\\\\d(:\\\\d\\\\d(\\\\.\\\\d+)?)?([Zz]|[-+]\\\\d\\\\d:\\\\d\\\\d)?)?/'
+        val: '@isodate-val'
+      }
+      localtime: {
+        match: '@/^\\\\d\\\\d:\\\\d\\\\d(:\\\\d\\\\d(\\\\.\\\\d+)?)?/'
+        val: '@localtime-val'
+      }
+    }
+  }
+  options: tokenSet: {
+    KEY: ['#ST' '#ID' null null]
+  }
+  options: comment: def: { slash: null multi: null }
+
+  rule: toml: open: [
+    { s: ['#ST #NR #ID' '#CL'] p: table b: 2 }
+    { s: ['#OS' '#ST #NR #ID'] p: table b: 2 }
+    { s: ['#OS' '#OS'] p: table b: 2 }
+    { s: ['#ST #NR #ID' '#DOT'] p: table b: 2 }
+    { s: '#ZZ' }
+  ]
+
+  rule: table: {
+    open: [
+      { s: ['#ST #NR #ID' '#CL'] p: map b: 2 }
+      { s: ['#OS' '#ST #NR #ID'] r: table b: 1 }
+      { s: ['#OS' '#OS'] r: table n: { table_array: 1 } }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        c: '@table-top-dive-cond'
+        p: dive
+        b: 2
+        u: { top_dive: true }
+      }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        r: table
+        c: '@lte-table-dive'
+        n: { table_dive: 1 }
+        a: '@table-dive-start'
+        g: 'dive,start'
+      }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        r: table
+        n: { table_dive: 1 }
+        a: '@table-dive-mid'
+        g: 'dive'
+      }
+      {
+        s: ['#ST #NR #ID' '#CS']
+        c: '@lte-table-dive'
+        p: '@table-end-p'
+        r: '@table-end-r'
+        a: '@table-key-cs-head'
+      }
+      {
+        s: ['#ST #NR #ID' '#CS']
+        p: '@table-end-p'
+        r: '@table-end-r'
+        a: '@table-key-cs-tail'
+        g: 'dive,end'
+      }
+      {
+        s: '#CS'
+        p: map
+        c: '@lte-table-array-1'
+        a: '@table-cs-push'
+      }
+    ]
+    close: [
+      { s: ['#OS' '#OS'] r: table b: 2 }
+      { s: ['#OS' '#ST #NR #ID'] r: table b: 1 }
+      { s: '#ZZ' }
+    ]
+  }
+
+  rule: map: {
+    open: [
+      { s: '#OS' b: 1 }
+      {
+        s: ['#ST #NR #ID' '#CL']
+        c: '@map-is-table-parent'
+        p: pair
+        b: 2
+      }
+      { s: ['#OB' '#ST #NR #ID'] b: 1 p: pair }
+      { s: ['#ST #NR #ID' '#DOT'] p: dive b: 2 }
+      { s: '#ZZ' }
+    ]
+    close: [
+      { s: '#OS' b: 1 }
+      { s: '#ZZ' }
+    ]
+  }
+
+  rule: pair: {
+    open: [
+      {
+        s: ['#ST #NR #ID' '#CL']
+        p: val
+        u: { pair: true }
+        a: '@pair-key-set'
+      }
+      { s: ['#ST #NR #ID' '#DOT'] p: dive b: 2 }
+    ]
+    close: [
+      { s: ['#ST #NR #ID'] b: 1 r: pair }
+      { s: ['#CA' '#ST #NR #ID'] b: 1 r: pair }
+      { s: ['#OS'] b: 1 }
+      { s: ['#CA' '#CB'] c: '@lte-pk' b: 1 }
+    ]
+  }
+
+  rule: val: close: [
+    { s: ['#ST #NR #ID'] b: 1 }
+    { s: ['#OS'] b: 1 }
+  ]
+
+  rule: elem: close: [
+    { s: ['#CA' '#CS'] b: 1 g: comma }
+  ]
+
+  rule: dive: {
+    open: [
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        p: dive
+        n: { dive_key: 1 }
+        a: '@dive-key-dot'
+      }
+      {
+        s: ['#ST #NR #ID' '#CL']
+        p: val
+        n: { dive_key: 1 }
+        u: { dive_end: true }
+      }
+    ]
+    close: [
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        b: 2
+        r: dive
+        c: '@lte-dive-key-1'
+        n: { dive_key: 0 }
+      }
+      {}
+    ]
+  }
+}
+`
+// --- END EMBEDDED toml-grammar.jsonic ---
+
 // Plugin implementation.
 const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
-  // Jsonic option overrides.
-  let jsonicOptions: any = {
-    rule: {
-      start: 'toml',
-      exclude: 'jsonic',
+  // Named function references used by the declarative grammar.
+  const refs: Record<string, any> = {
+    // Options callbacks.
+    '@make-toml-string-matcher': makeTomlStringMatcher,
+
+    '@isodate-val': (res: any) => {
+      let date: any = new Date(res[0])
+      date.__toml__ = {
+        kind:
+          (null == res[4] ? 'local' : 'offset') +
+          '-date' +
+          (null == res[1] ? '' : '-time'),
+        src: res[0],
+      }
+      return date
     },
-    lex: {
-      emptyResult: {},
-      match: {
-        string: {
-          // CUSTOM STRING MATCHER https://github.com/huan231/toml-nodejs }
-          // NOTE: order not needed as deep merge.
-          make: makeTomlStringMatcher,
-        },
-      },
+
+    '@localtime-val': (res: any) => {
+      let date: any = new Date(
+        60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime(),
+      )
+      date.__toml__ = {
+        kind: 'local-time',
+        src: res[0],
+      }
+      return date
     },
-    fixed: {
-      token: {
-        '#CL': '=',
-        '#DOT': '.',
-      },
+
+    // State actions (auto-applied by fnref via @<rule>-<state> convention).
+    '@toml-bo': (r: Rule) => {
+      r.node = {}
     },
-    match: {
-      token: {
-        '#ID': /^[a-zA-Z0-9_-]+/,
-      },
-      value: {
-        // TODO: match date string instead
-        isodate: {
-          match:
-            /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d(:\d\d(\.\d+)?)?([Zz]|[-+]\d\d:\d\d)?)?/,
-          val: (res: any) => {
-            // console.log(res)
-            let date: any = new Date(res[0])
-            date.__toml__ = {
-              kind:
-                (null == res[4] ? 'local' : 'offset') +
-                '-date' +
-                (null == res[1] ? '' : '-time'),
-              src: res[0],
-            }
-            return date
-          },
-        },
-        localtime: {
-          match: /^\d\d:\d\d(:\d\d(\.\d+)?)?/,
-          val: (res: any) => {
-            let date: any = new Date(
-              60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime(),
-            )
-            date.__toml__ = {
-              kind: 'local-time',
-              src: res[0],
-            }
-            return date
-          },
-        },
-      },
+
+    '@table-bo': (r: Rule) => {
+      r.node = r.parent.node
     },
-    value: {
-      def: {
-        nan: { val: NaN },
-        '+nan': { val: NaN },
-        '-nan': { val: NaN },
-        inf: { val: Infinity },
-        '+inf': { val: Infinity },
-        '-inf': { val: -Infinity },
-      },
+
+    '@table-bc': (r: Rule) => {
+      if (!r.u.top_dive) {
+        Object.assign(r.node, r.child.node)
+      }
     },
-    tokenSet: {
-      KEY: ['#ST', '#ID', null, null],
-      VAL: [, , , ,],
+
+    '@table-ac': (_r: Rule, _ctx: any, next: any) => {
+      next.n.table_dive = 0
+      next.n.table_array = 0
     },
-    comment: {
-      def: {
-        slash: null,
-        multi: null,
-      },
+
+    '@dive-bc': (r: Rule) => {
+      if (r.u.dive_end) {
+        r.node[r.o0.val] = r.child.node
+      }
+    },
+
+    // Alt actions.
+    '@table-dive-start': (r: any) => {
+      let key = r.o0.val
+      if (r.n.table_array && Array.isArray(r.parent.node[key])) {
+        let arr = r.parent.node[key]
+        let last = arr[arr.length - 1]
+        r.node = last ? last : (arr.push({}), arr[arr.length - 1])
+      } else {
+        r.node = r.parent.node[key] = r.parent.node[key] || {}
+      }
+    },
+
+    '@table-dive-mid': (r: any) => {
+      let key = r.o0.val
+      if (Array.isArray(r.prev.node)) {
+        let arr = r.prev.node
+        let last = arr[arr.length - 1]
+        last = last ? last : (arr.push({}), arr[arr.length - 1])
+        r.node = last[key] = last[key] || {}
+      } else {
+        r.node = r.prev.node[key] = r.prev.node[key] || {}
+      }
+    },
+
+    '@table-key-cs-head': (r: any) => {
+      let key = r.o0.val
+      r.parent.node[key] = r.node =
+        r.parent.node[key] || (r.n.table_array ? [] : {})
+    },
+
+    '@table-key-cs-tail': (r: any) => {
+      let key = r.o0.val
+      if (Array.isArray(r.prev.node)) {
+        let arr = r.prev.node
+        let last = arr[arr.length - 1]
+        last = last ? last : (arr.push({}), arr[arr.length - 1])
+        r.node = last[key] = last[key] || {}
+      } else {
+        r.node = r.prev.node[key] =
+          r.prev.node[key] || (r.n.table_array ? [] : {})
+      }
+    },
+
+    '@table-cs-push': (r: any) => {
+      r.prev.node.push((r.node = {}))
+    },
+
+    '@pair-key-set': (r: Rule) => {
+      r.u.key = r.o0.val
+    },
+
+    '@dive-key-dot': (r: any) => {
+      r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {}
+    },
+
+    // Conditions.
+    '@table-top-dive-cond': (r: any) => 1 === r.d && 'table' !== r.prev.name,
+    '@lte-table-dive': (r: any) => r.lte('table_dive'),
+    '@lte-table-array-1': (r: any) => r.lte('table_array', 1),
+    '@lte-dive-key-1': (r: any) => r.lte('dive_key', 1),
+    '@lte-pk': (r: any) => r.lte('pk'),
+    '@map-is-table-parent': (r: any) => 'table' === r.parent.name,
+
+    // Conditional next-rule targets (p:/r: returning a rule name or false).
+    '@table-end-p': (r: any) => !r.n.table_array && 'map',
+    '@table-end-r': (r: any) => r.n.table_array && 'table',
+  }
+
+  // Parse embedded grammar definition using a separate standard Jsonic instance,
+  // then apply options and rules to this plugin's Jsonic.
+  const grammarDef: any = Jsonic.make()(grammarText)
+  grammarDef.ref = refs
+
+  // Patch option values that can't be expressed in the grammar text
+  // (NaN/Infinity literals can't round-trip through Jsonic parsing).
+  grammarDef.options.value = {
+    def: {
+      nan: { val: NaN },
+      '+nan': { val: NaN },
+      '-nan': { val: NaN },
+      inf: { val: Infinity },
+      '+inf': { val: Infinity },
+      '-inf': { val: -Infinity },
     },
   }
 
-  jsonic.options(jsonicOptions)
-
-  const { ZZ, ST, NR, OS, CS, CL, DOT, ID, CA, OB, CB } = jsonic.token
-
-  const KEY = [ST, NR, ID]
-
-  jsonic.rule('toml', (rs: RuleSpec) => {
-    rs.bo((r: any) => {
-      r.node = {}
-    }).open([
-      { s: [KEY, CL], p: 'table', b: 2 },
-      { s: [OS, KEY], p: 'table', b: 2 },
-      { s: [OS, OS], p: 'table', b: 2 },
-      { s: [KEY, DOT], p: 'table', b: 2 },
-      { s: [ZZ] },
-    ])
-  })
-
-  jsonic.rule('table', (rs: RuleSpec) => {
-    rs.bo((r: any) => {
-      r.node = r.parent.node
-    })
-      .open([
-        { s: [KEY, CL], p: 'map', b: 2 },
-
-        { s: [OS, KEY], r: 'table', b: 1 },
-
-        { s: [OS, OS], r: 'table', n: { table_array: 1 } },
-
-        {
-          s: [KEY, DOT],
-          c: (r: any) => 1 === r.d && 'table' !== r.prev.name,
-          p: 'dive',
-          b: 2,
-          u: { top_dive: true },
-        },
-
-        {
-          s: [KEY, DOT],
-          r: 'table',
-          // c: { n: { table_dive: 0 } },
-          c: (r: any) => r.lte('table_dive'),
-          n: { table_dive: 1 },
-          a: (r: any) => {
-            let key = r.o0.val
-            if (r.n.table_array && Array.isArray(r.parent.node[key])) {
-              let arr = r.parent.node[key]
-              let last = arr[arr.length - 1]
-              r.node = last ? last : (arr.push({}), arr[arr.length - 1])
-            } else {
-              r.node = r.parent.node[key] = r.parent.node[key] || {}
-            }
-          },
-          g: 'dive,start',
-        },
-
-        {
-          s: [KEY, DOT],
-          r: 'table',
-          n: { table_dive: 1 },
-          a: (r: any) => {
-            let key = r.o0.val
-            // console.log('KEY', key, r.n.table_array)
-            // console.log('PREV', r.prev.node)
-            if (Array.isArray(r.prev.node)) {
-              let arr = r.prev.node
-              // console.log('ARR', arr)
-              let last = arr[arr.length - 1]
-              last = last ? last : (arr.push({}), arr[arr.length - 1])
-              // console.log('LAST', last)
-              r.node = last[key] = last[key] || {}
-            } else {
-              r.node = r.prev.node[key] = r.prev.node[key] || {}
-            }
-          },
-          g: 'dive',
-        },
-
-        {
-          s: [KEY, CS],
-          // c: { n: { table_dive: 0 } },
-          c: (r: any) => r.lte('table_dive'),
-          p: (r: any) => !r.n.table_array && 'map',
-          r: (r: any) => r.n.table_array && 'table',
-          a: (r: any) => {
-            let key = r.o0.val
-            r.parent.node[key] = r.node =
-              r.parent.node[key] || (r.n.table_array ? [] : {})
-          },
-        },
-
-        {
-          s: [KEY, CS],
-          p: (r: any) => !r.n.table_array && 'map',
-          r: (r: any) => r.n.table_array && 'table',
-          a: (r: any) => {
-            let key = r.o0.val
-            // console.log('DIVE END', key, r.prev.node)
-
-            if (Array.isArray(r.prev.node)) {
-              let arr = r.prev.node
-              // console.log('ARR', arr)
-              let last = arr[arr.length - 1]
-              last = last ? last : (arr.push({}), arr[arr.length - 1])
-              // console.log('LAST', last)
-              r.node = last[key] = last[key] || {}
-            } else {
-              r.node = r.prev.node[key] =
-                r.prev.node[key] || (r.n.table_array ? [] : {})
-            }
-          },
-          g: 'dive,end',
-        },
-
-        {
-          s: [CS],
-          p: 'map',
-          // c: { n: { table_array: 1 } },
-          c: (r: any) => r.lte('table_array', 1),
-          a: (r: any) => {
-            // r.node = r.prev.node
-            r.prev.node.push((r.node = {}))
-          },
-        },
-      ])
-
-      .bc((r: any) => {
-        if (!r.u.top_dive) {
-          Object.assign(r.node, r.child.node)
-        }
-      })
-
-      .close([
-        { s: [OS, OS], r: 'table', b: 2 },
-        { s: [OS, KEY], r: 'table', b: 1 },
-        { s: [ZZ] },
-      ])
-
-      .ac((_rule: any, _ctx: any, next: any) => {
-        next.n.table_dive = 0
-        next.n.table_array = 0
-      })
-  })
-
-  jsonic.rule('map', (rs: RuleSpec) => {
-    rs.open([
-      { s: [OS], b: 1 },
-
-      // Pair from implicit map.
-      {
-        s: [KEY, CL],
-        c: (r: any) => 'table' === r.parent.name,
-        p: 'pair',
-        b: 2,
-      },
-
-      { s: [OB, KEY], b: 1, p: 'pair' },
-      {
-        s: [KEY, DOT],
-        p: 'dive',
-        b: 2,
-      },
-      { s: [ZZ] },
-    ]).close([{ s: [OS], b: 1 }, { s: [ZZ] }])
-  })
-
-  jsonic.rule('pair', (rs: RuleSpec) => {
-    rs.open([
-      {
-        s: [KEY, CL],
-        p: 'val',
-        u: { pair: true },
-        a: (r: Rule) => (r.u.key = r.o0.val),
-      },
-      {
-        s: [KEY, DOT],
-        p: 'dive',
-        b: 2,
-      },
-    ]).close([
-      { s: [KEY], b: 1, r: 'pair' },
-      { s: [CA, KEY], b: 1, r: 'pair' },
-
-      { s: [OS], b: 1 },
-      // Ignore trailing comma at end of map.
-      {
-        s: [CA, CB],
-        // c: { n: { pk: 0 } },
-        c: (r: any) => r.lte('pk'),
-        b: 1,
-      },
-    ])
-  })
-
-  jsonic.rule('val', (rs: RuleSpec) => {
-    rs.close([
-      { s: [KEY], b: 1 },
-      { s: [OS], b: 1 },
-    ])
-  })
-
-  jsonic.rule('elem', (rs: RuleSpec) => {
-    rs.close([
-      // Ignore trailing comma.
-      { s: [CA, CS], b: 1, g: 'comma' },
-    ])
-  })
-
-  jsonic.rule('dive', (rs: any) => {
-    rs.open([
-      {
-        s: [KEY, DOT],
-        p: 'dive',
-        n: { dive_key: 1 },
-        a: (r: any) => {
-          r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {}
-        },
-      },
-      {
-        s: [KEY, CL],
-        p: 'val',
-        n: { dive_key: 1 },
-        u: { dive_end: true },
-      },
-    ])
-      .bc((r: any) => {
-        if (r.u.dive_end) {
-          r.node[r.o0.val] = r.child.node
-        }
-      })
-      .close([
-        {
-          s: [KEY, DOT],
-          b: 2,
-          r: 'dive',
-          // c: { n: { dive_key: 1 } },
-          c: (r: any) => r.lte('dive_key', 1),
-          n: { dive_key: 0 },
-        },
-        {},
-      ])
-  })
+  jsonic.grammar(grammarDef)
 }
 
 // Adapted from https://github.com/huan231/toml-nodejs/blob/master/src/tokenizer.ts
@@ -385,7 +369,6 @@ function makeTomlStringMatcher() {
       ++cI
 
       const char = src[sI]
-      // console.log('CHAR:' + char)
 
       switch (char) {
         case '\n':
@@ -400,14 +383,8 @@ function makeTomlStringMatcher() {
 
         case delimiter:
           if (isMultiline) {
-            // console.log('M0<' + src.substring(sI, sI + 3) + '>', 'V<' + value + '>')
-
             if (delimiter !== src[sI + 1]) {
               value += delimiter
-              //++cI
-              //++sI
-
-              // console.log('M1<' + src.substring(sI, sI + 3) + '>', 'V<' + value + '>')
               continue
             }
 
@@ -416,7 +393,6 @@ function makeTomlStringMatcher() {
               value += delimiter
               cI += 1
               sI += 1
-              // console.log('M2<' + src.substring(sI, sI + 3) + '>', 'V<' + value + '>')
               continue
             }
 
@@ -426,13 +402,11 @@ function makeTomlStringMatcher() {
             if (delimiter === src[sI + 1]) {
               value += delimiter
               sI++
-              // console.log('M3<' + src.substring(sI, sI + 3) + '>', 'V<' + value + '>')
             }
 
             if (delimiter === src[sI + 1]) {
               value += delimiter
               sI++
-              // console.log('M4<' + src.substring(sI, sI + 3) + '>', 'V<' + value + '>')
             }
           }
 
@@ -458,7 +432,6 @@ function makeTomlStringMatcher() {
 
           switch (delimiter) {
             case "'":
-              // console.log('APPEND:' + char)
               value += char
 
               continue
@@ -466,7 +439,6 @@ function makeTomlStringMatcher() {
             case '"':
               if (char === '\\') {
                 const char = src[(++cI, ++sI)]
-                // console.log('ESCAPE:' + char)
 
                 if (isEscaped(char)) {
                   value += ESCAPES[char]
@@ -485,7 +457,6 @@ function makeTomlStringMatcher() {
                   }
 
                   let us = String.fromCharCode(cc)
-                  // console.log('CC', cc, us)
 
                   value += us
                   sI += 1 // Loop increments sI.
@@ -536,7 +507,6 @@ function makeTomlStringMatcher() {
                   isMultiline &&
                   (isWhitespace(char) || char === '\n' || char === '\r')
                 ) {
-                  // while (this.iterator.take(' ', '\t', '\n')) {
                   while (
                     (' ' === src[sI + 1] && ++cI) ||
                     ('\t' === src[sI + 1] && ++cI) ||
@@ -551,7 +521,6 @@ function makeTomlStringMatcher() {
                   continue
                 }
 
-                // return lex.bad('unexpected', sI, sI + 1)
                 value += '\u001b'
                 continue
               }
@@ -569,8 +538,6 @@ function makeTomlStringMatcher() {
     pnt.rI = rI
 
     let st = lex.token('#ST', value, src.substring(begin, sI), pnt)
-
-    // console.log(st, '<' + value + '>')
 
     return st
   }

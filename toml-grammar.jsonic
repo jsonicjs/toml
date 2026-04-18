@@ -1,0 +1,166 @@
+# TOML Grammar Definition
+# Parsed by a standard Jsonic instance and passed to jsonic.grammar()
+# Function references (@ prefixed) are resolved against the refs map.
+# Regex references (@/pattern/flags) are resolved to RegExp instances.
+
+{
+  options: rule: { start: toml exclude: jsonic }
+  options: lex: {
+    emptyResult: {}
+    match: string: make: '@make-toml-string-matcher'
+  }
+  options: fixed: token: { '#CL': '=' '#DOT': '.' }
+  options: match: {
+    token: { '#ID': '@/^[a-zA-Z0-9_-]+/' }
+    value: {
+      isodate: {
+        match: '@/^\\d\\d\\d\\d-\\d\\d-\\d\\d([Tt ]\\d\\d:\\d\\d(:\\d\\d(\\.\\d+)?)?([Zz]|[-+]\\d\\d:\\d\\d)?)?/'
+        val: '@isodate-val'
+      }
+      localtime: {
+        match: '@/^\\d\\d:\\d\\d(:\\d\\d(\\.\\d+)?)?/'
+        val: '@localtime-val'
+      }
+    }
+  }
+  options: tokenSet: {
+    KEY: ['#ST' '#ID' null null]
+  }
+  options: comment: def: { slash: null multi: null }
+
+  rule: toml: open: [
+    { s: ['#ST #NR #ID' '#CL'] p: table b: 2 }
+    { s: ['#OS' '#ST #NR #ID'] p: table b: 2 }
+    { s: ['#OS' '#OS'] p: table b: 2 }
+    { s: ['#ST #NR #ID' '#DOT'] p: table b: 2 }
+    { s: '#ZZ' }
+  ]
+
+  rule: table: {
+    open: [
+      { s: ['#ST #NR #ID' '#CL'] p: map b: 2 }
+      { s: ['#OS' '#ST #NR #ID'] r: table b: 1 }
+      { s: ['#OS' '#OS'] r: table n: { table_array: 1 } }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        c: '@table-top-dive-cond'
+        p: dive
+        b: 2
+        u: { top_dive: true }
+      }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        r: table
+        c: '@lte-table-dive'
+        n: { table_dive: 1 }
+        a: '@table-dive-start'
+        g: 'dive,start'
+      }
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        r: table
+        n: { table_dive: 1 }
+        a: '@table-dive-mid'
+        g: 'dive'
+      }
+      {
+        s: ['#ST #NR #ID' '#CS']
+        c: '@lte-table-dive'
+        p: '@table-end-p'
+        r: '@table-end-r'
+        a: '@table-key-cs-head'
+      }
+      {
+        s: ['#ST #NR #ID' '#CS']
+        p: '@table-end-p'
+        r: '@table-end-r'
+        a: '@table-key-cs-tail'
+        g: 'dive,end'
+      }
+      {
+        s: '#CS'
+        p: map
+        c: '@lte-table-array-1'
+        a: '@table-cs-push'
+      }
+    ]
+    close: [
+      { s: ['#OS' '#OS'] r: table b: 2 }
+      { s: ['#OS' '#ST #NR #ID'] r: table b: 1 }
+      { s: '#ZZ' }
+    ]
+  }
+
+  rule: map: {
+    open: [
+      { s: '#OS' b: 1 }
+      {
+        s: ['#ST #NR #ID' '#CL']
+        c: '@map-is-table-parent'
+        p: pair
+        b: 2
+      }
+      { s: ['#OB' '#ST #NR #ID'] b: 1 p: pair }
+      { s: ['#ST #NR #ID' '#DOT'] p: dive b: 2 }
+      { s: '#ZZ' }
+    ]
+    close: [
+      { s: '#OS' b: 1 }
+      { s: '#ZZ' }
+    ]
+  }
+
+  rule: pair: {
+    open: [
+      {
+        s: ['#ST #NR #ID' '#CL']
+        p: val
+        u: { pair: true }
+        a: '@pair-key-set'
+      }
+      { s: ['#ST #NR #ID' '#DOT'] p: dive b: 2 }
+    ]
+    close: [
+      { s: ['#ST #NR #ID'] b: 1 r: pair }
+      { s: ['#CA' '#ST #NR #ID'] b: 1 r: pair }
+      { s: ['#OS'] b: 1 }
+      { s: ['#CA' '#CB'] c: '@lte-pk' b: 1 }
+    ]
+  }
+
+  rule: val: close: [
+    { s: ['#ST #NR #ID'] b: 1 }
+    { s: ['#OS'] b: 1 }
+  ]
+
+  rule: elem: close: [
+    { s: ['#CA' '#CS'] b: 1 g: comma }
+  ]
+
+  rule: dive: {
+    open: [
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        p: dive
+        n: { dive_key: 1 }
+        a: '@dive-key-dot'
+      }
+      {
+        s: ['#ST #NR #ID' '#CL']
+        p: val
+        n: { dive_key: 1 }
+        u: { dive_end: true }
+      }
+    ]
+    close: [
+      {
+        s: ['#ST #NR #ID' '#DOT']
+        b: 2
+        r: dive
+        c: '@lte-dive-key-1'
+        n: { dive_key: 0 }
+      }
+      {}
+    ]
+  }
+}
