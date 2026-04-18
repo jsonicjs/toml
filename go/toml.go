@@ -7,6 +7,7 @@ package toml
 
 import (
 	"fmt"
+	"math"
 
 	jsonic "github.com/jsonicjs/jsonic/go"
 )
@@ -233,7 +234,31 @@ func apply(j *jsonic.Jsonic) error {
 		gs.Rule = mapToRules(rm)
 	}
 
-	return j.Grammar(gs)
+	if err := j.Grammar(gs); err != nil {
+		return err
+	}
+
+	// Patch the rule set to work around a Go-jsonic lexer limitation: its
+	// matchMatch only checks alt position 0 when deciding whether a
+	// custom-regex token (e.g. #ID) is expected, while the TypeScript
+	// version checks the position currently being lexed (tI=0 or tI=1).
+	// Inject an always-false dummy alt with #ID at slot 0 into the close
+	// states whose real alts need #ID at slot 1, so `b` in `[b]` gets
+	// lexed as #ID rather than rejected.
+	injectIDLexGuards(j)
+
+	// Patch value defs for NaN/Infinity literals. These can't round-trip
+	// through Jsonic's own parse (they'd come back as the strings "NaN" /
+	// "Infinity" or as nil), so they're set here in Go where the literals
+	// are available directly.
+	registerSpecialFloats(j)
+
+	// Install the TOML-specific string matcher. Handles single- and
+	// double-quoted strings including the triple-quoted multi-line
+	// forms, which the default Jsonic string matcher doesn't.
+	registerTomlStringMatcher(j)
+
+	return nil
 }
 
 func registerFixedTokens(j *jsonic.Jsonic, gsMap map[string]any) {
@@ -258,29 +283,85 @@ func registerFixedTokens(j *jsonic.Jsonic, gsMap map[string]any) {
 	}
 }
 
+// injectIDLexGuards prepends a never-matching alt that has #ID at
+// position 0 to the close alts of rules where the real alts only
+// expect #ID at position 1. See comment at call site.
+func injectIDLexGuards(j *jsonic.Jsonic) {
+	idTin := j.Token("#ID")
+	stTin := j.Token("#ST")
+	nrTin := j.Token("#NR")
+	idSlot := []jsonic.Tin{stTin, nrTin, idTin}
+
+	never := jsonic.AltCond(func(_ *jsonic.Rule, _ *jsonic.Context) bool {
+		return false
+	})
+
+	for _, name := range []string{"table", "pair"} {
+		j.Rule(name, func(rs *jsonic.RuleSpec) {
+			dummy := &jsonic.AltSpec{
+				S: [][]jsonic.Tin{idSlot},
+				C: never,
+			}
+			rs.Close = append([]*jsonic.AltSpec{dummy}, rs.Close...)
+		})
+	}
+}
+
+// registerTomlStringMatcher installs the TOML string matcher at a
+// priority that lets it pre-empt Jsonic's default string lexer.
+func registerTomlStringMatcher(j *jsonic.Jsonic) {
+	j.SetOptions(jsonic.Options{
+		Lex: &jsonic.LexOptions{
+			Match: map[string]*jsonic.MatchSpec{
+				"tomlstring": {
+					Order: 900000, // above match.value/token (1e6) not reached; below fixed tokens.
+					Make:  tomlStringMatcher,
+				},
+			},
+		},
+	})
+}
+
+// registerSpecialFloats adds TOML's +/- nan and +/- inf keyword values
+// alongside the standard true/false/null, since setting Value.Def
+// replaces Jsonic's defaults entirely.
+func registerSpecialFloats(j *jsonic.Jsonic) {
+	posInf := math.Inf(1)
+	negInf := math.Inf(-1)
+	nan := math.NaN()
+
+	j.SetOptions(jsonic.Options{
+		Value: &jsonic.ValueOptions{
+			Def: map[string]*jsonic.ValueDef{
+				"true":  {Val: true},
+				"false": {Val: false},
+				"null":  {Val: nil},
+				"nan":   {Val: nan},
+				"+nan":  {Val: nan},
+				"-nan":  {Val: nan},
+				"inf":   {Val: posInf},
+				"+inf":  {Val: posInf},
+				"-inf":  {Val: negInf},
+			},
+		},
+	})
+}
+
 func stripUnsupported(gsMap map[string]any) {
 	om, ok := gsMap["options"].(map[string]any)
 	if !ok {
 		return
 	}
+	// The TypeScript port installs a custom string matcher that handles
+	// TOML's triple-quoted literals. The Go port installs its own
+	// equivalent in registerTomlStringMatcher(); remove the @-ref so
+	// Grammar() doesn't try to resolve it against our ref map.
 	if lex, ok := om["lex"].(map[string]any); ok {
 		if match, ok := lex["match"].(map[string]any); ok {
 			delete(match, "string")
 			if len(match) == 0 {
 				delete(lex, "match")
 			}
-		}
-	}
-	if match, ok := om["match"].(map[string]any); ok {
-		if value, ok := match["value"].(map[string]any); ok {
-			delete(value, "isodate")
-			delete(value, "localtime")
-			if len(value) == 0 {
-				delete(match, "value")
-			}
-		}
-		if len(match) == 0 {
-			delete(om, "match")
 		}
 	}
 

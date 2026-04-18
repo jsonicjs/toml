@@ -14,13 +14,7 @@ import (
 	jsonic "github.com/jsonicjs/jsonic/go"
 )
 
-// Subset of TSV spec files that the current Go skeleton passes. The
-// spec files are shared with the TypeScript port; groups listed in
-// tsvUnsupported below require features not yet wired up on the Go
-// side (triple-quoted strings, date/time regex matchers,
-// NaN/Infinity value keywords, and — principally — correct handling
-// of multi-table and array-of-table transitions, whose action
-// handlers are faithfully ported only in the TypeScript version).
+// Subset of TSV spec files that the current Go skeleton passes.
 var tsvSubset = []string{
 	"happy",
 	"basic-values",
@@ -32,16 +26,11 @@ var tsvSubset = []string{
 	"inline-tables",
 	"quoted-keys",
 	"comments",
-}
-
-// tsvUnsupported documents the TSV groups the skeleton does not yet
-// cover, kept here as a visible TODO list.
-var tsvUnsupported = []string{
-	"tables",          // multi-section sequencing
-	"array-of-tables", // [[...]] state propagation
-	"whitespace",      // multi-section sequencing
-	"mixed",           // pair followed by section
-	"errors",          // error-code surface differs from TS
+	"tables",
+	"array-of-tables",
+	"whitespace",
+	"mixed",
+	"errors",
 }
 
 func unescape(s string) string {
@@ -176,7 +165,6 @@ func mustJSON(v any) string {
 
 // Ensure our test runner survives the skeleton's known parser.
 var _ = jsonic.Version // keep the import useful
-var _ = tsvUnsupported
 
 func TestTSV(t *testing.T) {
 	for _, name := range tsvSubset {

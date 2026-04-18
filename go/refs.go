@@ -13,6 +13,11 @@ import (
 func makeRefs() map[jsonic.FuncRef]any {
 	return map[jsonic.FuncRef]any{
 
+		// --- Value-match callbacks (datetime / time) ---
+
+		"@isodate-val":   func(res []string) any { return isodateVal(res) },
+		"@localtime-val": func(res []string) any { return localtimeVal(res) },
+
 		// --- State actions (auto-wired by rule name convention) ---
 
 		"@toml-bo": jsonic.StateAction(func(r *jsonic.Rule, _ *jsonic.Context) {
@@ -40,6 +45,17 @@ func makeRefs() map[jsonic.FuncRef]any {
 			}
 		}),
 
+		"@table-ac": jsonic.StateAction(func(r *jsonic.Rule, _ *jsonic.Context) {
+			// Reset the dive/array counters on the rule that the parser
+			// transitions to after this table closes. Mirrors the TS
+			// handler that receives `next` as its third arg.
+			next := r.Next
+			if next != nil && next != jsonic.NoRule {
+				next.N["table_dive"] = 0
+				next.N["table_array"] = 0
+			}
+		}),
+
 		"@dive-bc": jsonic.StateAction(func(r *jsonic.Rule, _ *jsonic.Context) {
 			if r.U["dive_end"] == nil {
 				return
@@ -64,8 +80,10 @@ func makeRefs() map[jsonic.FuncRef]any {
 			if !ok {
 				return
 			}
+			existing := parent[key]
+
 			if r.N["table_array"] > 0 {
-				if arr, ok := parent[key].([]any); ok {
+				if arr, ok := existing.([]any); ok {
 					if len(arr) > 0 {
 						if last, ok := arr[len(arr)-1].(map[string]any); ok {
 							r.Node = last
@@ -73,13 +91,25 @@ func makeRefs() map[jsonic.FuncRef]any {
 						}
 					}
 					newMap := make(map[string]any)
-					parent[key] = append(arr, newMap)
+					arr = append(arr, newMap)
+					parent[key] = arr
 					r.Node = newMap
 					return
 				}
 			}
-			if existing, ok := parent[key].(map[string]any); ok {
-				r.Node = existing
+
+			// Plain-table dive into an existing array: track it so later
+			// handlers can treat it like [[…]]. Mirrors the TS behavior
+			// `r.parent.node[key] || {}` where truthy arrays pass through
+			// unchanged.
+			if arr, ok := existing.([]any); ok {
+				r.Node = arr
+				r.U["arr_parent"] = parent
+				r.U["arr_key"] = key
+				return
+			}
+			if m, ok := existing.(map[string]any); ok {
+				r.Node = m
 				return
 			}
 			newMap := make(map[string]any)
@@ -89,7 +119,13 @@ func makeRefs() map[jsonic.FuncRef]any {
 
 		"@table-dive-mid": jsonic.AltAction(func(r *jsonic.Rule, _ *jsonic.Context) {
 			key := tokenString(r.O0)
-			if arr, ok := r.Prev.Node.([]any); ok {
+			if _, ok := r.Prev.Node.([]any); ok {
+				// Extract array from its actual home in the parent map so
+				// appends here are visible to later reads. Go slice headers
+				// don't share through map values.
+				arrParent, _ := r.Prev.U["arr_parent"].(map[string]any)
+				arrKey, _ := r.Prev.U["arr_key"].(string)
+				arr, _ := arrParent[arrKey].([]any)
 				var last map[string]any
 				if len(arr) > 0 {
 					last, _ = arr[len(arr)-1].(map[string]any)
@@ -97,9 +133,10 @@ func makeRefs() map[jsonic.FuncRef]any {
 				if last == nil {
 					last = make(map[string]any)
 					arr = append(arr, last)
-					// Note: arr is a local copy; without writing back, the
-					// caller's slice header isn't updated. Handled by
-					// append to parent's field on table close.
+					if arrParent != nil {
+						arrParent[arrKey] = arr
+					}
+					r.Prev.Node = arr
 				}
 				next, ok := last[key].(map[string]any)
 				if !ok {
@@ -133,6 +170,8 @@ func makeRefs() map[jsonic.FuncRef]any {
 					arr := []any{}
 					parent[key] = arr
 					r.Node = arr
+					r.U["arr_parent"] = parent
+					r.U["arr_key"] = key
 				} else {
 					m := make(map[string]any)
 					parent[key] = m
@@ -140,13 +179,21 @@ func makeRefs() map[jsonic.FuncRef]any {
 				}
 				return
 			}
+			if arr, ok := existing.([]any); ok {
+				r.Node = arr
+				r.U["arr_parent"] = parent
+				r.U["arr_key"] = key
+				return
+			}
 			r.Node = existing
-			parent[key] = existing
 		}),
 
 		"@table-key-cs-tail": jsonic.AltAction(func(r *jsonic.Rule, _ *jsonic.Context) {
 			key := tokenString(r.O0)
-			if arr, ok := r.Prev.Node.([]any); ok {
+			if _, ok := r.Prev.Node.([]any); ok {
+				arrParent, _ := r.Prev.U["arr_parent"].(map[string]any)
+				arrKey, _ := r.Prev.U["arr_key"].(string)
+				arr, _ := arrParent[arrKey].([]any)
 				var last map[string]any
 				if len(arr) > 0 {
 					last, _ = arr[len(arr)-1].(map[string]any)
@@ -154,6 +201,10 @@ func makeRefs() map[jsonic.FuncRef]any {
 				if last == nil {
 					last = make(map[string]any)
 					arr = append(arr, last)
+					if arrParent != nil {
+						arrParent[arrKey] = arr
+					}
+					r.Prev.Node = arr
 				}
 				next, ok := last[key].(map[string]any)
 				if !ok {
@@ -173,11 +224,19 @@ func makeRefs() map[jsonic.FuncRef]any {
 					arr := []any{}
 					prev[key] = arr
 					r.Node = arr
+					r.U["arr_parent"] = prev
+					r.U["arr_key"] = key
 				} else {
 					m := make(map[string]any)
 					prev[key] = m
 					r.Node = m
 				}
+				return
+			}
+			if arr, ok := existing.([]any); ok {
+				r.Node = arr
+				r.U["arr_parent"] = prev
+				r.U["arr_key"] = key
 				return
 			}
 			r.Node = existing
@@ -186,7 +245,15 @@ func makeRefs() map[jsonic.FuncRef]any {
 		"@table-cs-push": jsonic.AltAction(func(r *jsonic.Rule, _ *jsonic.Context) {
 			newMap := make(map[string]any)
 			if arr, ok := r.Prev.Node.([]any); ok {
-				r.Prev.Node = append(arr, newMap)
+				arr = append(arr, newMap)
+				r.Prev.Node = arr
+				// The array also lives in its parent map; writing back
+				// there keeps both views consistent after slice growth.
+				if arrParent, ok := r.Prev.U["arr_parent"].(map[string]any); ok {
+					if arrKey, ok := r.Prev.U["arr_key"].(string); ok {
+						arrParent[arrKey] = arr
+					}
+				}
 			}
 			r.Node = newMap
 		}),
