@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Embeds toml-grammar.jsonic into src/toml.ts.
+// Embeds toml-grammar.jsonic into src/toml.ts and go/toml.go.
 // Run via: npm run embed
 
 const fs = require('fs')
@@ -32,4 +32,14 @@ const tsContent = grammar
 embed(
   path.join(__dirname, 'src', 'toml.ts'),
   'const grammarText = `\n' + tsContent + '`'
+)
+
+// Go: raw string (backticks cannot appear in content).
+if (grammar.includes('`')) {
+  console.error('Error: grammar file contains backticks, cannot embed in Go raw string')
+  process.exit(1)
+}
+embed(
+  path.join(__dirname, 'go', 'toml.go'),
+  'const grammarText = `\n' + grammar + '`'
 )
