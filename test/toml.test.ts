@@ -3,8 +3,7 @@
 import { test, describe } from 'node:test'
 import Fs from 'node:fs'
 import Path from 'node:path'
-
-import { expect } from '@hapi/code'
+import { deepStrictEqual as equal } from 'node:assert/strict'
 
 import { Jsonic } from 'jsonic'
 // import { Debug } from 'jsonic/debug'
@@ -22,7 +21,7 @@ describe('toml', () => {
 
   test('happy', async () => {
     const toml = makeToml()
-    expect(toml(`a=1`, { xlog: -1 })).equal({ a: 1 })
+    equal(toml(`a=1`, { xlog: -1 }), { a: 1 })
   })
 
 
@@ -40,11 +39,11 @@ describe('toml', () => {
         }
         let raw = null != spec.rawref ? Fixtures[spec.rawref].raw : spec.raw
         let out = parser(raw)
-        expect(out).equal(spec.out)
+        equal(out, spec.out)
       }
       catch (e: any) {
         if (spec.err) {
-          expect(spec.err).equal(e.code)
+          equal(spec.err, e.code)
         }
         else {
           console.error('FIXTURE: ' + name)
@@ -69,7 +68,7 @@ describe('toml', () => {
         // console.log('TEST', test.name)
         test.out = toml(test.toml)
         test.norm = norm(test.out, test.name)
-        expect(test.norm).equal(test.json)
+        equal(test.norm, test.json)
         // console.log('PASS', test.name)
         counts.pass++
       }
