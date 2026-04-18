@@ -43,6 +43,7 @@
     "@hapi/code": "^9.0.3",
     "@jsonic/doc": "^0.0.9",
     "@types/node": "^24.9.1",
+    "jsonic": "^2.24.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3"
   },
