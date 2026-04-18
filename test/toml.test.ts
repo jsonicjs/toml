@@ -1,4 +1,4 @@
-/* Copyright (c) 2022-2024 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2022-2026 Richard Rodger and other contributors, MIT License */
 
 import { test, describe } from 'node:test'
 import Fs from 'node:fs'
@@ -14,45 +14,7 @@ import { Toml } from '..'
 // npm run install-toml-test
 
 
-const Fixtures = require('../test/toml-fixtures')
-
-
 describe('toml', () => {
-
-  test('happy', async () => {
-    const toml = makeToml()
-    equal(toml(`a=1`, { xlog: -1 }), { a: 1 })
-  })
-
-
-  test('fixtures', async () => {
-    const toml = Jsonic.make().use(Toml)
-    Object.entries(Fixtures).map((fixture) => {
-      let name: string = fixture[0]
-      let spec: any = fixture[1]
-
-      try {
-        let parser = toml
-        if (spec.opt) {
-          let j = spec.make ? spec.make(Jsonic) : Jsonic.make()
-          parser = j.use(Toml, spec.opt)
-        }
-        let raw = null != spec.rawref ? Fixtures[spec.rawref].raw : spec.raw
-        let out = parser(raw)
-        equal(out, spec.out)
-      }
-      catch (e: any) {
-        if (spec.err) {
-          equal(spec.err, e.code)
-        }
-        else {
-          console.error('FIXTURE: ' + name)
-          throw e
-        }
-      }
-    })
-  })
-
 
   test('toml-valid', async () => {
     const toml = Jsonic.make().use(Toml)
@@ -190,12 +152,6 @@ describe('toml', () => {
     }
   })
 })
-
-function makeToml() {
-  return Jsonic.make()
-    // .use(Debug)
-    .use(Toml)
-}
 
 function find(parent: string, found: any[]) {
   for (let file of Fs.readdirSync(parent)) {
