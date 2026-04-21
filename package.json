@@ -1,6 +1,6 @@
 {
   "name": "@jsonic/toml",
-  "version": "0.8.0",
+  "version": "0.0.0",
   "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support toml syntax.",
   "main": "dist/toml.js",
   "type": "commonjs",
@@ -26,13 +26,11 @@
     "embed": "node embed-grammar.js",
     "build": "node embed-grammar.js && tsc --build src test",
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json test/toml-test",
-    "doc": "jsonic-doc",
-    "prettier": "prettier --write --no-semi --single-quote src/*.ts test/*.js",
     "install-toml-test": "git -C test/toml-test pull || git clone https://github.com/BurntSushi/toml-test.git test/toml-test",
     "reset": "npm run clean && npm i && npm run install-toml-test && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
-    "repo-publish-quick": "npm run prettier && npm run build && npm run test && npm run doc && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org "
+    "repo-publish-quick": "npm run build && npm run test && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org "
   },
   "license": "MIT",
   "files": [
@@ -41,10 +39,7 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "@jsonic/doc": "^0.0.9",
     "@types/node": "^25.6.0",
-    "jsonic": "^2.25.1",
-    "prettier": "^3.8.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
