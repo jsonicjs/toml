@@ -20,6 +20,14 @@ _None_
 <!--END:options-->
 
 
+## Documentation
+
+Documentation is organised around the
+[Diataxis](https://diataxis.fr) framework. Start from the
+per-language landing pages:
+
+- [TypeScript](doc/toml-ts.md) — tutorial, how-to, reference, explanation.
+- [Go](doc/toml-go.md) — tutorial, how-to, reference, explanation.
 
 
 # References
