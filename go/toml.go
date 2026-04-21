@@ -297,7 +297,7 @@ func injectIDLexGuards(j *jsonic.Jsonic) {
 	})
 
 	for _, name := range []string{"table", "pair"} {
-		j.Rule(name, func(rs *jsonic.RuleSpec) {
+		j.Rule(name, func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 			dummy := &jsonic.AltSpec{
 				S: [][]jsonic.Tin{idSlot},
 				C: never,

@@ -1,7 +1,18 @@
 # @jsonic/toml (TypeScript)
 
-This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to
-support [TOML](https://toml.io) syntax.
+This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser
+to support [TOML](https://toml.io) syntax.
+
+The documentation follows the [Diataxis](https://diataxis.fr) framework
+and is split into four purposes:
+
+- [Tutorial](./ts/tutorial.md) — a step-by-step lesson for newcomers.
+- [How-to guides](./ts/how-to.md) — task-oriented recipes for common
+  problems.
+- [Reference](./ts/reference.md) — the plugin's API, options, and
+  value-mapping rules.
+- [Explanation](./ts/explanation.md) — discussion of how and why the
+  plugin is built the way it is.
 
 ## Install
 
@@ -9,7 +20,7 @@ support [TOML](https://toml.io) syntax.
 npm install @jsonic/toml jsonic
 ```
 
-## Usage
+## At a glance
 
 ```js
 const { Jsonic } = require('jsonic')
@@ -25,9 +36,5 @@ name = "Tom Preston-Werner"
 `)
 ```
 
-## Development
-
-- `npm run build` – compile `src/` and `test/`.
-- `npm test` – run the node test runner against compiled tests.
-- `npm run install-toml-test` – clone the BurntSushi `toml-test` suite into `test/toml-test`.
-- `npm run reset` – clean, install, fetch the test suite, build, and test.
+For anything beyond this snippet, start with the
+[tutorial](./ts/tutorial.md).

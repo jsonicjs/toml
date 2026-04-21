@@ -42,9 +42,9 @@
   ],
   "devDependencies": {
     "@jsonic/doc": "^0.0.9",
-    "@types/node": "^24.9.1",
-    "jsonic": "^2.24.0",
-    "prettier": "^3.6.2",
+    "@types/node": "^25.6.0",
+    "jsonic": "^2.25.1",
+    "prettier": "^3.8.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
