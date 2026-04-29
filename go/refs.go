@@ -138,6 +138,16 @@ func makeRefs() map[jsonic.FuncRef]any {
 					}
 					r.Prev.Node = arr
 				}
+				// An intervening [[a.b]] leaves last[key] as a []any; keep
+				// it so the next table-cs-push can append. Mirrors the TS
+				// dive-mid's `r.node = r.prev.node[key] || {}` where a
+				// truthy array falls straight through.
+				if nextArr, ok := last[key].([]any); ok {
+					r.Node = nextArr
+					r.U["arr_parent"] = last
+					r.U["arr_key"] = key
+					return
+				}
 				next, ok := last[key].(map[string]any)
 				if !ok {
 					next = make(map[string]any)
@@ -148,6 +158,15 @@ func makeRefs() map[jsonic.FuncRef]any {
 			}
 			prev, ok := r.Prev.Node.(map[string]any)
 			if !ok {
+				return
+			}
+			// Same array-preservation rule when the previous node was a map
+			// rather than a slice (e.g. second [[a.b]] after dive-start
+			// returns the first a[0] map whose b already holds an array).
+			if arr, ok := prev[key].([]any); ok {
+				r.Node = arr
+				r.U["arr_parent"] = prev
+				r.U["arr_key"] = key
 				return
 			}
 			next, ok := prev[key].(map[string]any)

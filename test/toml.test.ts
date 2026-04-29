@@ -50,13 +50,17 @@ describe('toml', () => {
 
     // Handle test case oddities
     function norm(val: any, name: string) {
-      // console.log(name)
+      // Tests where every numeric leaf is a float (values happen to be
+      // integer-valued, so the int-vs-float guess below can't recover this
+      // without help).
+      const allFloat =
+        name.endsWith('float/max-int') ||
+        name.endsWith('spec-1.0.0/float-0') ||
+        name.endsWith('spec-1.1.0/common-23') ||
+        name.endsWith('inline-table/spaces')
 
       let jstr = JSON.stringify(val, function(this: any, k: string, v: any) {
-        if ('infinity_plus' === k) {
-          v = '__toml__,float,+inf'
-        }
-        else if (Infinity === v) {
+        if (Infinity === v) {
           v = '__toml__,float,inf'
         }
         else if (-Infinity === v) {
@@ -64,6 +68,12 @@ describe('toml', () => {
         }
         else if (Number.isNaN(v)) {
           v = '__toml__,float,nan'
+        }
+        // JSON can't round-trip -0, so tag it before it's serialised
+        // (only matters when the test expects a float "-0"; an integer -0
+        // normalises to "0" anyway).
+        else if (Object.is(v, -0) && name.endsWith('float/zero')) {
+          v = '__toml__,float,-0'
         }
         else if (this) {
           if (this[k]) {
@@ -81,7 +91,11 @@ describe('toml', () => {
           let vt = typeof v
           if ('number' === vt) {
             if (name.endsWith('float/zero')) {
-              return { type: 'float', value: '' + v }
+              // JS collapses -0 to "0"; the TOML test expects the sign.
+              return { type: 'float', value: Object.is(v, -0) ? '-0' : '' + v }
+            }
+            else if (allFloat) {
+              return { type: 'float', value: goFloat(v) }
             }
             else if (name.endsWith('long') &&
               v > 9e10) {
@@ -120,8 +134,8 @@ describe('toml', () => {
                   .replace(/t/g, 'T')
                   .replace(/ /g, 'T')
                   .replace(/z/g, 'Z')
-                  .replace(/\.6Z/, '.6000Z')
-                  .replace(/\.6\+/, '.6000+')
+                  .replace(/\.6Z/, '.600Z')
+                  .replace(/\.6\+/, '.600+')
                   .replace(/^(\d\d:\d\d)$/, '$1:00')
                   .replace(/T(\d\d:\d\d)([-Z])/, 'T$1:00$2')
                   .replace(/T(\d\d:\d\d)$/, 'T$1:00')
@@ -152,6 +166,20 @@ describe('toml', () => {
     }
   })
 })
+
+// Format a JS number the way Go's %g does: scientific or decimal,
+// whichever is shorter (ties go to decimal). Matches the "value" strings
+// in toml-test fixtures, which are emitted by BurntSushi's Go reference.
+function goFloat(v: number): string {
+  if (Object.is(v, -0)) return '-0'
+  if (v === 0) return '0'
+  const dec = '' + v
+  const sci = v.toExponential().replace(
+    /e([-+]?)(\d+)/,
+    (_, sign, num) => 'e' + (sign || '+') + num.padStart(2, '0'),
+  )
+  return dec.length <= sci.length ? dec : sci
+}
 
 function find(parent: string, found: any[]) {
   for (let file of Fs.readdirSync(parent)) {

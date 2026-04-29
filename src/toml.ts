@@ -184,8 +184,14 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
     // Options callbacks.
     '@make-toml-string-matcher': makeTomlStringMatcher,
 
+    // Referenced by the embedded grammar's `val:` fields, used by the Go
+    // port which keeps the regex-based matchers. The TS plugin replaces
+    // the whole matcher with @isodate-match / @localtime-match below, so
+    // these aren't actually invoked on this side — kept only so
+    // jsonic.grammar() can resolve the '@isodate-val' / '@localtime-val'
+    // refs during option installation.
     '@isodate-val': (res: any) => {
-      let date: any = new Date(res[0])
+      const date: any = new Date(res[0])
       date.__toml__ = {
         kind:
           (null == res[4] ? 'local' : 'offset') +
@@ -197,14 +203,51 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
     },
 
     '@localtime-val': (res: any) => {
-      let date: any = new Date(
+      const date: any = new Date(
         60 * 60 * 1000 + new Date('1970-01-01 ' + res[0]).getTime(),
       )
-      date.__toml__ = {
-        kind: 'local-time',
-        src: res[0],
-      }
+      date.__toml__ = { kind: 'local-time', src: res[0] }
       return date
+    },
+
+    // Context-aware replacements installed after jsonic.grammar() runs.
+    // A bare date-shaped key like `2001-02-03 = 1` or a table header
+    // `[2002-01-02]` would otherwise be swallowed by the regex value
+    // matcher before the #ID token matcher ever gets a chance.
+    '@isodate-match': (lex: Lex, rule: any) => {
+      if (isKeyContext(lex, rule)) return null
+      const m = lex.fwd.match(
+        /^\d\d\d\d-\d\d-\d\d([Tt ]\d\d:\d\d(:\d\d(\.\d+)?)?([Zz]|[-+]\d\d:\d\d)?)?/,
+      )
+      if (!m) return null
+      const date: any = new Date(m[0])
+      date.__toml__ = {
+        kind:
+          (null == m[4] ? 'local' : 'offset') +
+          '-date' +
+          (null == m[1] ? '' : '-time'),
+        src: m[0],
+      }
+      const pnt = lex.pnt
+      const tkn = lex.token('#VL', date, m[0], pnt)
+      pnt.sI += m[0].length
+      pnt.cI += m[0].length
+      return tkn
+    },
+
+    '@localtime-match': (lex: Lex, rule: any) => {
+      if (isKeyContext(lex, rule)) return null
+      const m = lex.fwd.match(/^\d\d:\d\d(:\d\d(\.\d+)?)?/)
+      if (!m) return null
+      const date: any = new Date(
+        60 * 60 * 1000 + new Date('1970-01-01 ' + m[0]).getTime(),
+      )
+      date.__toml__ = { kind: 'local-time', src: m[0] }
+      const pnt = lex.pnt
+      const tkn = lex.token('#VL', date, m[0], pnt)
+      pnt.sI += m[0].length
+      pnt.cI += m[0].length
+      return tkn
     },
 
     // State actions (auto-applied by fnref via @<rule>-<state> convention).
@@ -320,6 +363,40 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
   }
 
   jsonic.grammar(grammarDef)
+
+  // Swap the grammar's regex-based date/time matchers for the
+  // context-aware function matchers. The grammar file keeps the regex
+  // form so the Go port (which has no equivalent of isKeyContext) still
+  // parses it. On the TS side, these overrides let date-shaped bare keys
+  // fall through to the #ID token matcher.
+  jsonic.options({
+    match: {
+      value: {
+        isodate: { match: refs['@isodate-match'] },
+        localtime: { match: refs['@localtime-match'] },
+      },
+    },
+  })
+}
+
+// Value matchers fire unconditionally, so a date-shaped bare key
+// (e.g. `2001-02-03 = 1`, `[2002-01-02]`, `a.2001-02-08 = 7`) would be
+// claimed as a datetime value unless we defer to the #ID token matcher
+// when the current rule position accepts a key. Value-producing rules
+// (val, list, elem) never list #ID in their expected tokens; key-accepting
+// rules (toml, map, dive, pair, table) do. Value matchers aren't told which
+// tI they're at, so we scan all positions in the current state.
+function isKeyContext(lex: Lex, rule: any): boolean {
+  const tcol = rule?.spec?.def?.tcol
+  if (!tcol) return false
+  const oc = 'o' === rule.state ? 0 : 1
+  const positions = tcol[oc]
+  if (!positions) return false
+  const idTin = lex.tokenize('#ID')
+  for (const expected of positions) {
+    if (expected && expected.includes(idTin)) return true
+  }
+  return false
 }
 
 // Adapted from https://github.com/huan231/toml-nodejs/blob/master/src/tokenizer.ts
@@ -558,7 +635,12 @@ const isEscaped = (char: string): char is keyof typeof ESCAPES => {
 }
 
 const isUnicodeCharacter = (char: string) => {
-  return char <= '\u{10ffff}'
+  // Compare by code point, not UTF-16 lexicographic order: '\u{10ffff}'
+  // encodes as the surrogate pair '􏿿', so a literal <= compare
+  // wrongly rejects single code units in [, \udbff). It also must
+  // accept lone surrogates so characters outside the BMP (iterated as two
+  // code units) don't trip an "unprintable" error.
+  return (char.codePointAt(0) ?? 0) <= 0x10ffff
 }
 
 const isControlCharacter = (char: string) => {

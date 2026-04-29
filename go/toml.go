@@ -258,6 +258,12 @@ func apply(j *jsonic.Jsonic) error {
 	// forms, which the default Jsonic string matcher doesn't.
 	registerTomlStringMatcher(j)
 
+	// Install context-aware date/time matchers so that date-shaped bare
+	// keys (`2001-02-03 = 1`, `[2002-01-02]`, `a.2001-02-08 = 7`) fall
+	// through to #ID lexing instead of being swallowed by the grammar's
+	// regex-based isodate / localtime value matchers.
+	registerDateMatchers(j)
+
 	return nil
 }
 
