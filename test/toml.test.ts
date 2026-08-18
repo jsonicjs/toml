@@ -16,6 +16,47 @@ import { Toml } from '..'
 
 describe('toml', () => {
 
+  // A table header is attacker-controlled text, and it used to be walked
+  // straight into the prototype: `node[key] || {}` answers with
+  // `Object.prototype` for `__proto__` on an ordinary object, so the `||`
+  // never fired and the table's pairs were assigned onto the prototype of
+  // every object in the process. Tables are built with `Object.create(null)`
+  // now, which is what jsonic's own map nodes do — so the name is kept as an
+  // ordinary key and simply has nowhere to escape to.
+  test('proto-pollution', () => {
+    const toml = Jsonic.make().use(Toml)
+
+    const attacks = [
+      '[__proto__]\npolluted = "X"',
+      '[a.__proto__]\npolluted = "X"',
+      '[a.b.__proto__]\npolluted = "X"',
+      'a.__proto__.polluted = "X"',
+      '[[arr]]\n[arr.__proto__]\npolluted = "X"',
+      '[a.constructor.prototype]\npolluted = "X"',
+      '[constructor.prototype]\npolluted = "X"',
+    ]
+
+    for (const src of attacks) {
+      try { toml(src) } catch (e) { /* a parse error is an acceptable outcome */ }
+      equal(({} as any).polluted, undefined, 'polluted by: ' + JSON.stringify(src))
+      equal(([] as any).polluted, undefined, 'array polluted by: ' + JSON.stringify(src))
+      delete (Object.prototype as any).polluted
+      delete (Array.prototype as any).polluted
+    }
+  })
+
+  // The repair keeps the data. `__proto__` is a legal TOML bare key and the
+  // document means it as a name, so it must still arrive as one.
+  test('proto-key-is-kept-as-data', () => {
+    const toml = Jsonic.make().use(Toml)
+
+    const out: any = toml('[__proto__]\nx = 1')
+    equal(Object.prototype.hasOwnProperty.call(out, '__proto__'), true)
+    equal(out['__proto__'].x, 1)
+    equal(JSON.stringify(out), '{"__proto__":{"x":1}}')
+  })
+
+
   test('toml-valid', async () => {
     const toml = Jsonic.make().use(Toml)
 
