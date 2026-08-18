@@ -250,9 +250,28 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       return tkn
     },
 
+    // A TOML table, with NO PROTOTYPE.
+    //
+    // Every table below is reached by `node[key] = node[key] || table()`,
+    // where `key` is a bare segment of a table header (`[a.b]`) or a dotted
+    // key — attacker-controlled text in any document you did not write. On an
+    // ordinary `{}` the read side of that idiom is the whole defect: `node`
+    // `['__proto__']` answers with `Object.prototype`, which is truthy, so the
+    // `||` never fires and the parser walks INTO the prototype and assigns the
+    // table's pairs there. `[__proto__]`, `[a.__proto__]` and
+    // `a.__proto__.polluted = 1` each polluted every object in the process.
+    //
+    // Refusing the key would be the other repair, and it is the wrong one:
+    // `__proto__` is a perfectly legal TOML bare key and the document means it
+    // as data. Without a prototype the same read answers `undefined`, the `||`
+    // fires, and the name lands as an ordinary own property — the key is kept,
+    // it just cannot reach a prototype. This is what jsonic's core grammar
+    // already does for maps (`Object.create(null)`), so the plugin now agrees
+    // with the engine it extends rather than holding the one shape that did not.
+
     // State actions (auto-applied by fnref via @<rule>-<state> convention).
     '@toml-bo': (r: Rule) => {
-      r.node = {}
+      r.node = Object.create(null)
     },
 
     '@table-bo': (r: Rule) => {
@@ -282,9 +301,9 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       if (r.n.table_array && Array.isArray(r.parent.node[key])) {
         let arr = r.parent.node[key]
         let last = arr[arr.length - 1]
-        r.node = last ? last : (arr.push({}), arr[arr.length - 1])
+        r.node = last ? last : (arr.push(Object.create(null)), arr[arr.length - 1])
       } else {
-        r.node = r.parent.node[key] = r.parent.node[key] || {}
+        r.node = r.parent.node[key] = r.parent.node[key] || Object.create(null)
       }
     },
 
@@ -293,17 +312,17 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       if (Array.isArray(r.prev.node)) {
         let arr = r.prev.node
         let last = arr[arr.length - 1]
-        last = last ? last : (arr.push({}), arr[arr.length - 1])
-        r.node = last[key] = last[key] || {}
+        last = last ? last : (arr.push(Object.create(null)), arr[arr.length - 1])
+        r.node = last[key] = last[key] || Object.create(null)
       } else {
-        r.node = r.prev.node[key] = r.prev.node[key] || {}
+        r.node = r.prev.node[key] = r.prev.node[key] || Object.create(null)
       }
     },
 
     '@table-key-cs-head': (r: any) => {
       let key = r.o0.val
       r.parent.node[key] = r.node =
-        r.parent.node[key] || (r.n.table_array ? [] : {})
+        r.parent.node[key] || (r.n.table_array ? [] : Object.create(null))
     },
 
     '@table-key-cs-tail': (r: any) => {
@@ -311,16 +330,16 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
       if (Array.isArray(r.prev.node)) {
         let arr = r.prev.node
         let last = arr[arr.length - 1]
-        last = last ? last : (arr.push({}), arr[arr.length - 1])
-        r.node = last[key] = last[key] || {}
+        last = last ? last : (arr.push(Object.create(null)), arr[arr.length - 1])
+        r.node = last[key] = last[key] || Object.create(null)
       } else {
         r.node = r.prev.node[key] =
-          r.prev.node[key] || (r.n.table_array ? [] : {})
+          r.prev.node[key] || (r.n.table_array ? [] : Object.create(null))
       }
     },
 
     '@table-cs-push': (r: any) => {
-      r.prev.node.push((r.node = {}))
+      r.prev.node.push((r.node = Object.create(null)))
     },
 
     '@pair-key-set': (r: Rule) => {
@@ -328,7 +347,7 @@ const Toml: Plugin = (jsonic: Jsonic, _options: TomlOptions) => {
     },
 
     '@dive-key-dot': (r: any) => {
-      r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || {}
+      r.parent.node[r.o0.val] = r.node = r.parent.node[r.o0.val] || Object.create(null)
     },
 
     // Conditions.
